@@ -21,7 +21,7 @@ Opening Cork should feel like pulling back a curtain, not launching an app.
 
 ## Current Status
 
-The project currently has the first runnable foundation:
+The project currently has the first runnable foundation and persistence layer:
 
 - Menu bar app.
 - Global keyboard shortcut: `Command` + `Option` + `B`.
@@ -96,11 +96,12 @@ The codebase is intentionally split so product logic can be tested without AppKi
 
 ## Next Development Slice
 
-The current slice is Milestone 2 persistence:
+The next slice is Milestone 3: selection and card actions:
 
-- Manually verify that moving cards and switching boards survives relaunch.
-- Capture any persistence rough edges.
-- Commit the persistence foundation.
-- Then move to selection and card actions.
+- Add selected-card state.
+- Add keyboard movement for selected cards.
+- Add delete and duplicate actions.
+- Add a minimal contextual card menu.
+- Add a native, quiet selected-card treatment.
 
 See [docs/milestones.md](docs/milestones.md) for the broader build path.
