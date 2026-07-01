@@ -28,13 +28,14 @@ The project currently has the first runnable foundation:
 - Top-edge slide-in board panel.
 - Multiple named sample boards.
 - Sample text, checklist, and image cards.
-- Draggable card positions in memory.
+- Draggable card positions.
+- JSON-backed persistence in Application Support.
+- Autosave for board selection and card movement.
 - A separate `CorkCore` target for board and card models.
-- Unit tests for board selection and card movement.
+- Unit tests for board selection, card movement, snapshot encoding, JSON persistence, and autosave.
 
 Not implemented yet:
 
-- Persistence across launches.
 - Creating and editing real cards.
 - Drag-and-drop imports.
 - Card resizing.
@@ -95,11 +96,11 @@ The codebase is intentionally split so product logic can be tested without AppKi
 
 ## Next Development Slice
 
-The next slice should be persistence:
+The current slice is Milestone 2 persistence:
 
-- Save boards, selected board, card content, and card frames.
-- Restore the last board on launch.
-- Keep persistence behind an adapter so the runtime model stays simple.
-- Add tests around save/load behavior before adding more card types.
+- Manually verify that moving cards and switching boards survives relaunch.
+- Capture any persistence rough edges.
+- Commit the persistence foundation.
+- Then move to selection and card actions.
 
 See [docs/milestones.md](docs/milestones.md) for the broader build path.

@@ -7,7 +7,7 @@ import Foundation
 final class AppCoordinator: ObservableObject {
     static let shared = AppCoordinator()
 
-    let boardStore = BoardStore()
+    let boardStore: BoardStore
 
     @Published private(set) var isBoardVisible = false
 
@@ -15,7 +15,9 @@ final class AppCoordinator: ObservableObject {
     private var globalHotKey: GlobalHotKey?
     private var didStart = false
 
-    private init() {}
+    private init() {
+        boardStore = Self.makeBoardStore()
+    }
 
     func start() {
         guard !didStart else {
@@ -43,6 +45,29 @@ final class AppCoordinator: ObservableObject {
     func hideBoard() {
         boardPanelController.hide()
         isBoardVisible = false
+    }
+
+    func flushPendingAutosave() {
+        boardStore.flushPendingAutosave()
+    }
+
+    private static func makeBoardStore() -> BoardStore {
+        do {
+            let repository = try JSONBoardRepository.applicationSupportRepository()
+            let snapshot: BoardLibrarySnapshot
+
+            do {
+                snapshot = try repository.loadSnapshot() ?? .sample
+            } catch {
+                NSLog("Cork could not load saved board state: \(error.localizedDescription)")
+                snapshot = .sample
+            }
+
+            return BoardStore(snapshot: snapshot, repository: repository)
+        } catch {
+            NSLog("Cork could not create board repository: \(error.localizedDescription)")
+            return BoardStore()
+        }
     }
 
     private func registerDefaultHotKey() {

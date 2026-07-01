@@ -33,6 +33,8 @@ Closeout verification:
 
 ## Iteration 2: Persistence
 
+Status: in progress.
+
 Goal: Cork remembers boards and card positions across launches.
 
 Scope:
@@ -57,6 +59,17 @@ Exit criteria:
 - Move a card, quit Cork, relaunch Cork, and see the card in the moved position.
 - Switch boards, quit Cork, relaunch Cork, and see the same selected board.
 - Saved state tests pass.
+
+Completed so far:
+
+- Added `BoardLibrarySnapshot`.
+- Added the `BoardRepository` persistence boundary.
+- Added `JSONBoardRepository`.
+- Wired app startup to load from Application Support.
+- Added debounced autosave for board selection and card movement.
+- Added quit-time autosave flushing.
+- Added repository, snapshot, and autosave tests.
+- Added persistence acceptance tests for missing-save fallback, selected board restore, moved card restore, and full board-library round trips.
 
 ## Iteration 3: Selection and Card Actions
 

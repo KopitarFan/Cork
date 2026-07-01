@@ -133,33 +133,41 @@ The domain model should stay platform-light. It can use `Foundation` value types
 
 ### Persistence
 
-Persistence is not implemented yet. It should be introduced behind a small protocol so Cork can keep a simple runtime model.
+Persistence is implemented behind a small repository protocol so Cork can keep a simple runtime model.
 
-Recommended shape:
+Current shape:
 
 ```swift
 public protocol BoardRepository {
-    func loadBoards() throws -> BoardLibrarySnapshot
-    func save(snapshot: BoardLibrarySnapshot) throws
+    func loadSnapshot() throws -> BoardLibrarySnapshot?
+    func saveSnapshot(_ snapshot: BoardLibrarySnapshot) throws
 }
 ```
 
-First persistence milestone:
+The first implementation is `JSONBoardRepository`, which stores a `BoardLibrarySnapshot` at:
+
+```text
+~/Library/Application Support/Cork/boards.json
+```
+
+Current persistence behavior:
 
 - Save all boards.
 - Save the selected board ID.
 - Save card frames and card content.
 - Restore state automatically on launch.
 - Fall back to sample boards if no saved state exists.
+- Debounce autosaves while cards are dragged.
+- Flush pending autosaves when Cork quits.
 
-Storage options:
+Storage notes:
 
-- Use SwiftData if it stays ergonomic and does not leak persistence concerns into the runtime model.
-- Use JSON in Application Support for the earliest prototype if that keeps the iteration faster and testable.
-- Store imported image/file assets in Application Support.
-- Use security-scoped bookmarks for external file references when Cork links rather than copies.
+- JSON is the right first storage layer because the domain model is already `Codable`, easy to test, and easy to inspect during early development.
+- SwiftData can still replace the repository internals later if Cork needs richer querying or migrations.
+- Imported image/file assets should be stored in Application Support.
+- Security-scoped bookmarks will be needed for external file references when Cork links rather than copies.
 
-The first persistence implementation can be simple. The important design point is to isolate it so Cork can evolve without migrating UI state by accident.
+The important design point is that persistence remains isolated. Cork should be able to evolve storage without changing board rendering or windowing code.
 
 ## Data Model
 
