@@ -5,6 +5,7 @@ import Foundation
 public final class BoardStore: ObservableObject {
     @Published public private(set) var boards: [CorkBoard]
     @Published public private(set) var selectedBoardID: CorkBoard.ID
+    @Published public private(set) var selectedItemID: BoardItem.ID?
     @Published public private(set) var lastPersistenceError: Error?
 
     public convenience init(snapshot: BoardLibrarySnapshot) {
@@ -47,6 +48,10 @@ public final class BoardStore: ObservableObject {
         boards.first { $0.id == selectedBoardID } ?? boards[0]
     }
 
+    public var selectedItem: BoardItem? {
+        selectedBoard.items.first { $0.id == selectedItemID }
+    }
+
     public var snapshot: BoardLibrarySnapshot {
         BoardLibrarySnapshot(boards: boards, selectedBoardID: selectedBoardID)
     }
@@ -59,18 +64,36 @@ public final class BoardStore: ObservableObject {
         }
 
         selectedBoardID = id
+        selectedItemID = nil
         scheduleAutosave()
     }
 
-    public func updateItemPosition(_ id: BoardItem.ID, to origin: BoardPoint) {
+    public func selectItem(_ id: BoardItem.ID) {
+        guard selectedBoard.items.contains(where: { $0.id == id }) else {
+            return
+        }
+
+        selectedItemID = id
+    }
+
+    public func clearSelection() {
+        selectedItemID = nil
+    }
+
+    public func updateItemPosition(
+        _ id: BoardItem.ID,
+        to origin: BoardPoint,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) {
         let didUpdate = updateSelectedBoard { board in
             guard let itemIndex = board.items.firstIndex(where: { $0.id == id }) else {
                 return false
             }
 
-            board.items[itemIndex].frame.origin = BoardPoint(
-                x: max(12, origin.x),
-                y: max(12, origin.y)
+            board.items[itemIndex].frame.origin = Self.clampedOrigin(
+                origin,
+                itemSize: board.items[itemIndex].frame.size,
+                canvasSize: canvasSize
             )
             board.updatedAt = Date()
             return true
@@ -79,6 +102,102 @@ public final class BoardStore: ObservableObject {
         if didUpdate {
             scheduleAutosave()
         }
+    }
+
+    @discardableResult
+    public func moveSelectedItem(
+        by delta: BoardPoint,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) -> Bool {
+        guard let selectedItemID,
+              let item = selectedItem
+        else {
+            return false
+        }
+
+        let nextOrigin = BoardPoint(
+            x: item.frame.origin.x + delta.x,
+            y: item.frame.origin.y + delta.y
+        )
+        updateItemPosition(selectedItemID, to: nextOrigin, constrainedTo: canvasSize)
+        return true
+    }
+
+    @discardableResult
+    public func deleteSelectedItem() -> Bool {
+        guard let selectedItemID else {
+            return false
+        }
+
+        return deleteItem(selectedItemID)
+    }
+
+    @discardableResult
+    public func deleteItem(_ id: BoardItem.ID) -> Bool {
+        let didDelete = updateSelectedBoard { board in
+            guard let itemIndex = board.items.firstIndex(where: { $0.id == id }) else {
+                return false
+            }
+
+            board.items.remove(at: itemIndex)
+            board.updatedAt = Date()
+            return true
+        }
+
+        if didDelete {
+            if selectedItemID == id {
+                selectedItemID = nil
+            }
+
+            scheduleAutosave()
+        }
+
+        return didDelete
+    }
+
+    @discardableResult
+    public func duplicateSelectedItem(constrainedTo canvasSize: BoardSize? = nil) -> BoardItem? {
+        guard let selectedItemID else {
+            return nil
+        }
+
+        return duplicateItem(selectedItemID, constrainedTo: canvasSize)
+    }
+
+    @discardableResult
+    public func duplicateItem(
+        _ id: BoardItem.ID,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) -> BoardItem? {
+        var duplicatedItem: BoardItem?
+
+        let didDuplicate = updateSelectedBoard { board in
+            guard let itemIndex = board.items.firstIndex(where: { $0.id == id }) else {
+                return false
+            }
+
+            var item = board.items[itemIndex]
+            item.id = UUID()
+            item.frame.origin = Self.clampedOrigin(
+                BoardPoint(
+                    x: item.frame.origin.x + 24,
+                    y: item.frame.origin.y + 24
+                ),
+                itemSize: item.frame.size,
+                canvasSize: canvasSize
+            )
+            board.items.append(item)
+            board.updatedAt = Date()
+            duplicatedItem = item
+            return true
+        }
+
+        if didDuplicate, let duplicatedItem {
+            selectedItemID = duplicatedItem.id
+            scheduleAutosave()
+        }
+
+        return duplicatedItem
     }
 
     public func flushPendingAutosave() {
@@ -129,5 +248,19 @@ public final class BoardStore: ObservableObject {
         } catch {
             lastPersistenceError = error
         }
+    }
+
+    private static func clampedOrigin(
+        _ origin: BoardPoint,
+        itemSize: BoardSize,
+        canvasSize: BoardSize?
+    ) -> BoardPoint {
+        let minimum = 12.0
+        let maximumX = canvasSize.map { max(minimum, $0.width - itemSize.width - minimum) }
+        let maximumY = canvasSize.map { max(minimum, $0.height - itemSize.height - minimum) }
+        let clampedX = min(maximumX ?? .greatestFiniteMagnitude, max(minimum, origin.x))
+        let clampedY = min(maximumY ?? .greatestFiniteMagnitude, max(minimum, origin.y))
+
+        return BoardPoint(x: clampedX, y: clampedY)
     }
 }

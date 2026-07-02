@@ -82,6 +82,10 @@ Closeout verification:
 
 ## Iteration 3: Selection and Card Actions
 
+Status: complete.
+
+Completed: 2026-07-01.
+
 Goal: users can work with cards intentionally, not just drag samples.
 
 Scope:
@@ -99,6 +103,26 @@ Exit criteria:
 - A selected card can be moved with keyboard commands.
 - A selected card can be deleted and duplicated.
 - Card actions are routed through the store or command layer.
+
+Completed:
+
+- Added selected-card state.
+- Added pointer selection and canvas-click selection clearing.
+- Added subtle selected-card treatment.
+- Added arrow-key movement for selected cards.
+- Added delete and duplicate commands.
+- Added card context menu actions.
+- Added store tests for selection, movement, delete, duplicate, clamping, and autosave behavior.
+
+Closeout verification:
+
+- Manual card interaction testing passed.
+- Selecting each card works.
+- Clicking the board background clears selection without breaking future selection.
+- Drag movement works for each card.
+- Arrow-key and `Shift` + arrow-key movement work for the selected card.
+- `Command-D`, Delete, and right-click Duplicate/Delete work.
+- Layout and action results persist across relaunch.
 
 ## Iteration 4: Real Card Creation
 

@@ -21,7 +21,7 @@ Opening Cork should feel like pulling back a curtain, not launching an app.
 
 ## Current Status
 
-The project currently has the first runnable foundation and persistence layer:
+The project currently has the first runnable foundation, persistence layer, and card interaction layer:
 
 - Menu bar app.
 - Global keyboard shortcut: `Command` + `Option` + `B`.
@@ -29,6 +29,9 @@ The project currently has the first runnable foundation and persistence layer:
 - Multiple named sample boards.
 - Sample text, checklist, and image cards.
 - Draggable card positions.
+- Selected-card state with keyboard movement.
+- Duplicate and delete actions for cards.
+- Context menus for card actions.
 - JSON-backed persistence in Application Support.
 - Autosave for board selection and card movement.
 - A separate `CorkCore` target for board and card models.

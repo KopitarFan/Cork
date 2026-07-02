@@ -1,4 +1,5 @@
 import CorkCore
+import AppKit
 import SwiftUI
 
 struct BoardView: View {
@@ -14,12 +15,50 @@ struct BoardView: View {
             GeometryReader { proxy in
                 ZStack(alignment: .topLeading) {
                     BoardCanvasBackground()
+                        .zIndex(0)
 
                     ForEach(boardStore.selectedBoard.items) { item in
-                        BoardCardView(item: item, boardSize: proxy.size) { origin in
-                            boardStore.updateItemPosition(item.id, to: origin)
-                        }
+                        BoardCardView(
+                            item: item,
+                            isSelected: item.id == boardStore.selectedItemID
+                        )
                     }
+
+                    BoardMouseInputView(
+                        items: boardStore.selectedBoard.items,
+                        selectedItemID: boardStore.selectedItemID,
+                        boardSize: boardSize(from: proxy.size),
+                        onSelect: { itemID in
+                            boardStore.selectItem(itemID)
+                        },
+                        onClearSelection: {
+                            boardStore.clearSelection()
+                        },
+                        onMove: { itemID, origin in
+                            boardStore.updateItemPosition(
+                                itemID,
+                                to: origin,
+                                constrainedTo: boardSize(from: proxy.size)
+                            )
+                        },
+                        onDuplicate: { itemID in
+                            boardStore.duplicateItem(
+                                itemID,
+                                constrainedTo: boardSize(from: proxy.size)
+                            )
+                        },
+                        onDelete: { itemID in
+                            boardStore.deleteItem(itemID)
+                        }
+                    )
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .zIndex(3)
+
+                    BoardKeyboardView { event in
+                        handleKeyDown(event, boardSize: boardSize(from: proxy.size))
+                    }
+                    .frame(width: 0, height: 0)
+                    .zIndex(4)
                 }
                 .clipped()
             }
@@ -32,6 +71,43 @@ struct BoardView: View {
         }
         .shadow(color: .black.opacity(0.24), radius: 22, x: 0, y: 18)
         .padding(1)
+    }
+
+    private func handleKeyDown(_ event: NSEvent, boardSize: BoardSize) -> Bool {
+        if event.modifierFlags.contains(.command),
+           event.charactersIgnoringModifiers?.lowercased() == "d" {
+            return boardStore.duplicateSelectedItem(constrainedTo: boardSize) != nil
+        }
+
+        switch Int(event.keyCode) {
+        case 51, 117:
+            return boardStore.deleteSelectedItem()
+        case 123:
+            return moveSelectedItem(x: -keyboardMoveAmount(for: event), y: 0, boardSize: boardSize)
+        case 124:
+            return moveSelectedItem(x: keyboardMoveAmount(for: event), y: 0, boardSize: boardSize)
+        case 125:
+            return moveSelectedItem(x: 0, y: keyboardMoveAmount(for: event), boardSize: boardSize)
+        case 126:
+            return moveSelectedItem(x: 0, y: -keyboardMoveAmount(for: event), boardSize: boardSize)
+        default:
+            return false
+        }
+    }
+
+    private func moveSelectedItem(x: Double, y: Double, boardSize: BoardSize) -> Bool {
+        boardStore.moveSelectedItem(
+            by: BoardPoint(x: x, y: y),
+            constrainedTo: boardSize
+        )
+    }
+
+    private func keyboardMoveAmount(for event: NSEvent) -> Double {
+        event.modifierFlags.contains(.shift) ? 24 : 8
+    }
+
+    private func boardSize(from size: CGSize) -> BoardSize {
+        BoardSize(width: size.width, height: size.height)
     }
 
     private var header: some View {
