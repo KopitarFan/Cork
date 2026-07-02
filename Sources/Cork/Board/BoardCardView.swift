@@ -3,10 +3,7 @@ import SwiftUI
 
 struct BoardCardView: View {
     let item: BoardItem
-    let boardSize: CGSize
-    let onMove: (BoardPoint) -> Void
-
-    @State private var dragStart: BoardPoint?
+    let isSelected: Bool
 
     var body: some View {
         cardContent
@@ -15,14 +12,19 @@ struct BoardCardView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(.primary.opacity(0.08), lineWidth: 1)
+                    .stroke(.primary.opacity(isSelected ? 0.12 : 0.08), lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.14), radius: 10, x: 0, y: 5)
-            .position(
-                x: item.frame.origin.x + item.frame.size.width / 2,
-                y: item.frame.origin.y + item.frame.size.height / 2
-            )
-            .gesture(dragGesture)
+            .overlay {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.accentColor.opacity(0.82), lineWidth: 2)
+                        .padding(1)
+                }
+            }
+            .shadow(color: .black.opacity(isSelected ? 0.2 : 0.14), radius: isSelected ? 14 : 10, x: 0, y: 5)
+            .offset(x: item.frame.origin.x, y: item.frame.origin.y)
+            .zIndex(isSelected ? 2 : 1)
+            .allowsHitTesting(false)
     }
 
     @ViewBuilder
@@ -93,31 +95,6 @@ struct BoardCardView: View {
         case .image:
             AnyShapeStyle(Color(nsColor: .underPageBackgroundColor).opacity(0.92))
         }
-    }
-
-    private var dragGesture: some Gesture {
-        DragGesture(minimumDistance: 2)
-            .onChanged { value in
-                if dragStart == nil {
-                    dragStart = item.frame.origin
-                }
-
-                guard let dragStart else {
-                    return
-                }
-
-                let maxX = max(12, Double(boardSize.width) - item.frame.size.width - 12)
-                let maxY = max(12, Double(boardSize.height) - item.frame.size.height - 12)
-                let nextOrigin = BoardPoint(
-                    x: min(maxX, max(12, dragStart.x + value.translation.width)),
-                    y: min(maxY, max(12, dragStart.y + value.translation.height))
-                )
-
-                onMove(nextOrigin)
-            }
-            .onEnded { _ in
-                dragStart = nil
-            }
     }
 
     private func symbolName(for card: ImageCard) -> String {

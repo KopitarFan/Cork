@@ -30,6 +30,7 @@ final class BoardPanelController {
             panel.orderFrontRegardless()
         }
 
+        panel.makeKey()
         animatePanel(to: visibleFrame)
     }
 
