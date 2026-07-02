@@ -1,4 +1,5 @@
 import CorkCore
+import AppKit
 import SwiftUI
 
 struct BoardCardView: View {
@@ -67,14 +68,8 @@ struct BoardCardView: View {
 
         case .image(let card):
             VStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(.thinMaterial)
-
-                    Image(systemName: symbolName(for: card))
-                        .font(.system(size: 40, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
+                imagePreview(for: card)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
 
                 Text(card.title)
                     .font(.system(.caption, design: .rounded))
@@ -86,6 +81,37 @@ struct BoardCardView: View {
         }
     }
 
+    @ViewBuilder
+    private func imagePreview(for card: ImageCard) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(.thinMaterial)
+
+            switch card.source {
+            case .fileReference(let url):
+                if let image = NSImage(contentsOf: url) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    placeholderImage
+                }
+            case .bundledSymbol(let symbolName):
+                Image(systemName: symbolName)
+                    .font(.system(size: 40, weight: .medium))
+                    .foregroundStyle(.secondary)
+            case nil:
+                placeholderImage
+            }
+        }
+    }
+
+    private var placeholderImage: some View {
+        Image(systemName: "photo")
+            .font(.system(size: 40, weight: .medium))
+            .foregroundStyle(.secondary)
+    }
+
     private var cardBackground: some ShapeStyle {
         switch item.content {
         case .text:
@@ -95,14 +121,6 @@ struct BoardCardView: View {
         case .image:
             AnyShapeStyle(Color(nsColor: .underPageBackgroundColor).opacity(0.92))
         }
-    }
-
-    private func symbolName(for card: ImageCard) -> String {
-        guard case .bundledSymbol(let symbolName) = card.source else {
-            return "photo"
-        }
-
-        return symbolName
     }
 }
 

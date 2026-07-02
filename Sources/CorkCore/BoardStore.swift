@@ -3,6 +3,13 @@ import Foundation
 
 @MainActor
 public final class BoardStore: ObservableObject {
+    public enum Defaults {
+        public static let newCardOrigin = BoardPoint(x: 48, y: 48)
+        public static let textCardSize = BoardSize(width: 260, height: 190)
+        public static let checklistCardSize = BoardSize(width: 240, height: 210)
+        public static let imageCardSize = BoardSize(width: 230, height: 170)
+    }
+
     @Published public private(set) var boards: [CorkBoard]
     @Published public private(set) var selectedBoardID: CorkBoard.ID
     @Published public private(set) var selectedItemID: BoardItem.ID?
@@ -78,6 +85,192 @@ public final class BoardStore: ObservableObject {
 
     public func clearSelection() {
         selectedItemID = nil
+    }
+
+    @discardableResult
+    public func createTextCard(
+        title: String = "Untitled Note",
+        body: String = "",
+        at origin: BoardPoint = Defaults.newCardOrigin,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) -> BoardItem {
+        createItem(
+            content: .text(TextCard(
+                title: sanitizedTitle(title, fallback: "Untitled Note"),
+                body: body
+            )),
+            origin: origin,
+            size: Defaults.textCardSize,
+            constrainedTo: canvasSize
+        )
+    }
+
+    @discardableResult
+    public func createChecklistCard(
+        title: String = "Untitled Checklist",
+        entries: [ChecklistEntry] = [],
+        at origin: BoardPoint = Defaults.newCardOrigin,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) -> BoardItem {
+        createItem(
+            content: .checklist(ChecklistCard(
+                title: sanitizedTitle(title, fallback: "Untitled Checklist"),
+                entries: entries
+            )),
+            origin: origin,
+            size: Defaults.checklistCardSize,
+            constrainedTo: canvasSize
+        )
+    }
+
+    @discardableResult
+    public func createImageCard(
+        title: String = "Untitled Image",
+        source: ImageSource? = nil,
+        at origin: BoardPoint = Defaults.newCardOrigin,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) -> BoardItem {
+        createItem(
+            content: .image(ImageCard(
+                title: sanitizedTitle(title, fallback: "Untitled Image"),
+                source: source
+            )),
+            origin: origin,
+            size: Defaults.imageCardSize,
+            constrainedTo: canvasSize
+        )
+    }
+
+    @discardableResult
+    public func updateTextCard(
+        _ id: BoardItem.ID,
+        title: String,
+        body: String
+    ) -> Bool {
+        updateItemContent(id) { content in
+            guard case .text(let currentCard) = content else {
+                return nil
+            }
+
+            let nextCard = TextCard(
+                title: sanitizedTitle(title, fallback: "Untitled Note"),
+                body: body
+            )
+
+            guard currentCard != nextCard else {
+                return nil
+            }
+
+            return .text(nextCard)
+        }
+    }
+
+    @discardableResult
+    public func updateChecklistCard(
+        _ id: BoardItem.ID,
+        title: String,
+        entries: [ChecklistEntry]
+    ) -> Bool {
+        updateItemContent(id) { content in
+            guard case .checklist(let currentCard) = content else {
+                return nil
+            }
+
+            let nextCard = ChecklistCard(
+                title: sanitizedTitle(title, fallback: "Untitled Checklist"),
+                entries: entries
+            )
+
+            guard currentCard != nextCard else {
+                return nil
+            }
+
+            return .checklist(nextCard)
+        }
+    }
+
+    @discardableResult
+    public func updateImageCard(
+        _ id: BoardItem.ID,
+        title: String,
+        source: ImageSource?
+    ) -> Bool {
+        updateItemContent(id) { content in
+            guard case .image(let currentCard) = content else {
+                return nil
+            }
+
+            let nextCard = ImageCard(
+                title: sanitizedTitle(title, fallback: "Untitled Image"),
+                source: source
+            )
+
+            guard currentCard != nextCard else {
+                return nil
+            }
+
+            return .image(nextCard)
+        }
+    }
+
+    @discardableResult
+    public func createBoard(name: String = "Untitled Board") -> CorkBoard {
+        let now = Date()
+        let board = CorkBoard(
+            name: sanitizedTitle(name, fallback: "Untitled Board"),
+            createdAt: now,
+            updatedAt: now
+        )
+
+        boards.append(board)
+        selectedBoardID = board.id
+        selectedItemID = nil
+        scheduleAutosave()
+
+        return board
+    }
+
+    @discardableResult
+    public func renameBoard(id: CorkBoard.ID, name: String) -> Bool {
+        guard let boardIndex = boards.firstIndex(where: { $0.id == id }) else {
+            return false
+        }
+
+        let sanitizedName = sanitizedTitle(name, fallback: "")
+
+        guard !sanitizedName.isEmpty,
+              boards[boardIndex].name != sanitizedName
+        else {
+            return false
+        }
+
+        boards[boardIndex].name = sanitizedName
+        boards[boardIndex].updatedAt = Date()
+        scheduleAutosave()
+
+        return true
+    }
+
+    @discardableResult
+    public func deleteBoard(id: CorkBoard.ID) -> Bool {
+        guard boards.count > 1,
+              let boardIndex = boards.firstIndex(where: { $0.id == id })
+        else {
+            return false
+        }
+
+        let wasSelectedBoard = boards[boardIndex].id == selectedBoardID
+        boards.remove(at: boardIndex)
+
+        if wasSelectedBoard {
+            let fallbackIndex = min(boardIndex, boards.count - 1)
+            selectedBoardID = boards[fallbackIndex].id
+            selectedItemID = nil
+        }
+
+        scheduleAutosave()
+
+        return true
     }
 
     public func updateItemPosition(
@@ -215,6 +408,57 @@ public final class BoardStore: ObservableObject {
         return update(&boards[boardIndex])
     }
 
+    @discardableResult
+    private func createItem(
+        content: BoardItemContent,
+        origin: BoardPoint,
+        size: BoardSize,
+        constrainedTo canvasSize: BoardSize?
+    ) -> BoardItem {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: Self.clampedOrigin(origin, itemSize: size, canvasSize: canvasSize),
+                size: size
+            ),
+            content: content
+        )
+
+        updateSelectedBoard { board in
+            board.items.append(item)
+            board.updatedAt = Date()
+            return true
+        }
+        selectedItemID = item.id
+        scheduleAutosave()
+
+        return item
+    }
+
+    @discardableResult
+    private func updateItemContent(
+        _ id: BoardItem.ID,
+        makeContent: (BoardItemContent) -> BoardItemContent?
+    ) -> Bool {
+        let didUpdate = updateSelectedBoard { board in
+            guard let itemIndex = board.items.firstIndex(where: { $0.id == id }),
+                  let nextContent = makeContent(board.items[itemIndex].content)
+            else {
+                return false
+            }
+
+            board.items[itemIndex].content = nextContent
+            board.updatedAt = Date()
+            return true
+        }
+
+        if didUpdate {
+            selectedItemID = id
+            scheduleAutosave()
+        }
+
+        return didUpdate
+    }
+
     private func scheduleAutosave() {
         guard repository != nil else {
             return
@@ -262,5 +506,10 @@ public final class BoardStore: ObservableObject {
         let clampedY = min(maximumY ?? .greatestFiniteMagnitude, max(minimum, origin.y))
 
         return BoardPoint(x: clampedX, y: clampedY)
+    }
+
+    private func sanitizedTitle(_ value: String, fallback: String) -> String {
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedValue.isEmpty ? fallback : trimmedValue
     }
 }

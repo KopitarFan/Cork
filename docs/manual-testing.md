@@ -1,8 +1,8 @@
 # Manual Testing Guide
 
-This guide covers the awkward macOS cases that are hard to prove with unit tests in the first milestone: full-screen Spaces, multiple desktops, menu bar behavior, global hot keys, and display geometry.
+This guide covers the awkward macOS cases that are hard to prove with unit tests: full-screen Spaces, multiple desktops, menu bar behavior, global hot keys, display geometry, and user-facing card creation flows.
 
-Use it before closing Milestone 1 and whenever Cork's windowing, hot-key, or menu bar behavior changes.
+Use the relevant sections before closing each milestone and whenever Cork's windowing, hot-key, menu bar, persistence, or card creation behavior changes.
 
 ## Test Setup
 
@@ -52,6 +52,110 @@ Notes to capture:
 - Board appears on an unexpected screen.
 - Hot key does not work.
 - Menu bar item disappears or becomes unresponsive.
+
+## Real Card Creation
+
+Run this section for Milestone 4 and whenever card creation, editing, board management, or persistence changes.
+
+Steps:
+
+1. Launch Cork with `swift run Cork`.
+2. Show the board.
+3. Use the board header add-card menu to create a text note.
+4. Enter a custom title and body, then save.
+5. Move the text note.
+6. Double-click the text note and edit the title and body.
+7. Right-click the text note and delete it.
+8. Use the board header add-card menu to create a checklist.
+9. Enter several lines, including at least one `[x] Done item`, then save.
+10. Move the checklist and edit it again.
+11. Use the board header add-card menu to create an image card.
+12. Choose a local image file.
+13. Verify the image thumbnail appears.
+14. Select the image card and use the pencil button to rename it.
+15. Quit Cork from the menu bar.
+16. Relaunch Cork.
+
+Expected:
+
+- New cards appear near the visible center of the board.
+- Created cards are selected immediately.
+- Text note edits update the visible card.
+- Checklist lines become checklist entries.
+- `[x]` and `- [x]` checklist lines are marked complete.
+- Local image cards show a thumbnail when the file is still available.
+- Card movement, edits, and deletion persist across relaunch.
+- Canceling any creation or edit dialog leaves the board unchanged.
+
+Failure notes:
+
+- Which creation path failed: board header, menu bar, double-click, right-click, or pencil button.
+- Whether the dialog opened behind the board or another app.
+- Whether the card appeared off-screen or under another card in a confusing way.
+- Whether persistence failed only before or after relaunch.
+- Whether a local image file moved or was deleted between runs.
+
+## Board Management
+
+Steps:
+
+1. Use the board header board-actions menu to create a new board.
+2. Give it a unique name.
+3. Add one text note to the new board.
+4. Rename the board.
+5. Switch to another board from the menu bar.
+6. Switch back to the renamed board.
+7. Quit and relaunch Cork.
+8. Verify the renamed board and its card are still present.
+9. Create a temporary board.
+10. Delete the temporary board.
+11. Try deleting the only remaining board if the library has just one board.
+
+Expected:
+
+- New boards are selected immediately.
+- Board names trim extra whitespace.
+- Blank board names are ignored.
+- Renamed boards appear in both the header and menu bar.
+- Deleting a board requires confirmation.
+- Cancel is the default-safe path in the delete confirmation.
+- Cork prevents deleting the final remaining board.
+- Board switching, board names, and board deletion persist across relaunch.
+
+Failure notes:
+
+- Whether the selected board changed unexpectedly.
+- Whether deleted boards came back after relaunch.
+- Whether deleting the selected board chose a sensible fallback board.
+- Whether menu bar board names became stale.
+
+## Menu Bar Creation
+
+Steps:
+
+1. Hide the board.
+2. Open the Cork menu bar item.
+3. Create a text note from `New Card`.
+4. Verify Cork shows the board after the card is created.
+5. Hide the board again.
+6. Create a checklist from `New Card`.
+7. Hide the board again.
+8. Create an image card from `New Card`.
+9. Create a new board from the `Boards` menu.
+10. Rename and delete the current board from the `Boards` menu.
+
+Expected:
+
+- Menu bar creation commands work while the board is hidden.
+- Successful creation shows the board.
+- Menu bar board actions affect the same selected board shown in the panel.
+- Canceling dialogs leaves the board hidden or unchanged as appropriate.
+
+Failure notes:
+
+- Whether Cork failed to show the board after a successful creation.
+- Whether commands affected the wrong board.
+- Whether the menu dismissed before the native dialog became usable.
 
 ## Full-Screen App Spaces
 
@@ -294,6 +398,9 @@ Stage Manager:
 Displays have separate Spaces:
 
 Baseline smoke test:
+Real card creation:
+Board management:
+Menu bar creation:
 Full-screen Spaces:
 Multiple desktops:
 Multiple monitors:
