@@ -8,6 +8,7 @@ struct BoardMouseInputView: NSViewRepresentable {
     let boardSize: BoardSize
     let onSelect: (BoardItem.ID) -> Void
     let onClearSelection: () -> Void
+    let onEdit: (BoardItem.ID) -> Void
     let onMove: (BoardItem.ID, BoardPoint) -> Void
     let onDuplicate: (BoardItem.ID) -> Void
     let onDelete: (BoardItem.ID) -> Void
@@ -24,6 +25,7 @@ struct BoardMouseInputView: NSViewRepresentable {
         nsView.boardSize = boardSize
         nsView.onSelect = onSelect
         nsView.onClearSelection = onClearSelection
+        nsView.onEdit = onEdit
         nsView.onMove = onMove
         nsView.onDuplicate = onDuplicate
         nsView.onDelete = onDelete
@@ -36,6 +38,7 @@ final class BoardMouseCatcherView: NSView {
     var boardSize = BoardSize(width: 0, height: 0)
     var onSelect: ((BoardItem.ID) -> Void)?
     var onClearSelection: (() -> Void)?
+    var onEdit: ((BoardItem.ID) -> Void)?
     var onMove: ((BoardItem.ID, BoardPoint) -> Void)?
     var onDuplicate: ((BoardItem.ID) -> Void)?
     var onDelete: ((BoardItem.ID) -> Void)?
@@ -58,6 +61,12 @@ final class BoardMouseCatcherView: NSView {
         }
 
         onSelect?(item.id)
+
+        if event.clickCount == 2 {
+            onEdit?(item.id)
+            return
+        }
+
         draggedItemID = item.id
         dragStartLocation = location
         dragStartOrigin = item.frame.origin
@@ -98,6 +107,16 @@ final class BoardMouseCatcherView: NSView {
         contextItemID = item.id
 
         let menu = NSMenu()
+        let editItem = NSMenuItem(
+            title: "Edit",
+            action: #selector(editContextItem),
+            keyEquivalent: ""
+        )
+        editItem.target = self
+        menu.addItem(editItem)
+
+        menu.addItem(.separator())
+
         let duplicateItem = NSMenuItem(
             title: "Duplicate",
             action: #selector(duplicateContextItem),
@@ -115,6 +134,15 @@ final class BoardMouseCatcherView: NSView {
         menu.addItem(deleteItem)
 
         menu.popUp(positioning: nil, at: location.nsPoint, in: self)
+    }
+
+    @objc private func editContextItem() {
+        guard let contextItemID else {
+            return
+        }
+
+        onEdit?(contextItemID)
+        self.contextItemID = nil
     }
 
     @objc private func duplicateContextItem() {

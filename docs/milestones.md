@@ -126,6 +126,10 @@ Closeout verification:
 
 ## Iteration 4: Real Card Creation
 
+Status: complete.
+
+Completed: 2026-07-02.
+
 Goal: users can build a useful board without editing sample data.
 
 Scope:
@@ -149,6 +153,29 @@ Exit criteria:
 - A user can create, edit, move, and delete checklists.
 - A user can add an image card from a local file.
 - Boards can be created, renamed, switched, and deleted.
+
+Completed:
+
+- Added store commands for creating text, checklist, and image cards.
+- Added store commands for editing text, checklist, and image cards.
+- Added store commands for creating, renaming, and deleting boards.
+- Added native AppKit dialogs for lightweight card and board editing.
+- Added local image creation through `NSOpenPanel`.
+- Added board header controls for card creation, card editing, and board actions.
+- Added menu bar commands for card creation and board management.
+- Added double-click and right-click Edit for cards.
+- Added local image thumbnail rendering for file-backed image cards.
+- Added tests for card creation, card editing, board lifecycle commands, clamping, autosave, and rejection cases.
+
+Closeout verification:
+
+- Manual real-card creation testing passed.
+- Text notes can be created, edited, moved, deleted, persisted, and restored.
+- Checklists can be created, edited, moved, deleted, persisted, and restored.
+- Local image cards can be created from file picker selections and persisted.
+- Boards can be created, renamed, switched, deleted with confirmation, persisted, and restored.
+- Step 7 automated verification passed: `swift test`, `swift build`, and `git diff --check`.
+- `swift test` passed with 64 tests and 0 failures.
 
 ## Iteration 5: Drag and Drop Imports
 

@@ -21,25 +21,28 @@ Opening Cork should feel like pulling back a curtain, not launching an app.
 
 ## Current Status
 
-The project currently has the first runnable foundation, persistence layer, and card interaction layer:
+The project currently has the first runnable foundation, persistence layer, card interaction layer, and real card creation flow:
 
 - Menu bar app.
 - Global keyboard shortcut: `Command` + `Option` + `B`.
 - Top-edge slide-in board panel.
 - Multiple named sample boards.
-- Sample text, checklist, and image cards.
+- Text, checklist, and image cards.
+- Card creation from the board header and menu bar.
+- Lightweight editing for text notes, checklist items, and image card titles.
+- Local image card creation through the native file picker.
 - Draggable card positions.
 - Selected-card state with keyboard movement.
-- Duplicate and delete actions for cards.
-- Context menus for card actions.
+- Duplicate, delete, and edit actions for cards.
+- Context menus for card actions, including double-click edit.
+- Board creation, rename, deletion, and menu-bar board switching.
 - JSON-backed persistence in Application Support.
-- Autosave for board selection and card movement.
+- Autosave for board selection, board changes, card creation, card editing, card movement, and card actions.
 - A separate `CorkCore` target for board and card models.
-- Unit tests for board selection, card movement, snapshot encoding, JSON persistence, and autosave.
+- Unit tests for board selection, card movement, card creation, card editing, board lifecycle commands, snapshot encoding, JSON persistence, and autosave.
 
 Not implemented yet:
 
-- Creating and editing real cards.
 - Drag-and-drop imports.
 - Card resizing.
 - Packaged `.app` release workflow.
@@ -93,18 +96,19 @@ Cork targets modern macOS and prefers native Apple APIs:
 - AppKit where macOS windowing behavior requires it.
 - `MenuBarExtra` for the menu bar utility surface.
 - Carbon hot keys for the first global shortcut.
-- SwiftData or a small persistence adapter for local board state.
+- A small JSON-backed persistence adapter for local board state.
 
 The codebase is intentionally split so product logic can be tested without AppKit and SwiftUI. `CorkCore` owns the board model. The app target owns presentation, window behavior, hot keys, and eventually drag-and-drop import adapters.
 
 ## Next Development Slice
 
-The next slice is Milestone 3: selection and card actions:
+The next slice is Milestone 5: drag-and-drop imports:
 
-- Add selected-card state.
-- Add keyboard movement for selected cards.
-- Add delete and duplicate actions.
-- Add a minimal contextual card menu.
-- Add a native, quiet selected-card treatment.
+- Accept image drops from Finder and Safari.
+- Accept file drops from Finder.
+- Accept URL drops from browsers.
+- Accept plain text drops.
+- Convert dropped providers into card creation intents.
+- Store copied assets in Application Support.
 
 See [docs/milestones.md](docs/milestones.md) for the broader build path.

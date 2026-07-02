@@ -4,6 +4,7 @@ import SwiftUI
 
 struct BoardView: View {
     @ObservedObject var boardStore: BoardStore
+    @State private var canvasSize = BoardSize(width: 900, height: 520)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,6 +35,9 @@ struct BoardView: View {
                         onClearSelection: {
                             boardStore.clearSelection()
                         },
+                        onEdit: { itemID in
+                            editItem(itemID)
+                        },
                         onMove: { itemID, origin in
                             boardStore.updateItemPosition(
                                 itemID,
@@ -61,6 +65,12 @@ struct BoardView: View {
                     .zIndex(4)
                 }
                 .clipped()
+                .onAppear {
+                    canvasSize = boardSize(from: proxy.size)
+                }
+                .onChange(of: proxy.size) { _, size in
+                    canvasSize = boardSize(from: size)
+                }
             }
         }
         .background(.regularMaterial)
@@ -71,6 +81,147 @@ struct BoardView: View {
         }
         .shadow(color: .black.opacity(0.24), radius: 22, x: 0, y: 18)
         .padding(1)
+    }
+
+    private func createTextCard() {
+        let draft = TextCard(title: "Untitled Note", body: "")
+
+        guard let card = CorkDialogs.promptForTextCard(
+            title: "New Text Note",
+            card: draft
+        ) else {
+            return
+        }
+
+        boardStore.createTextCard(
+            title: card.title,
+            body: card.body,
+            at: originForNewCard(size: BoardStore.Defaults.textCardSize),
+            constrainedTo: canvasSize
+        )
+    }
+
+    private func createChecklistCard() {
+        let draft = ChecklistCard(title: "Untitled Checklist", entries: [])
+
+        guard let card = CorkDialogs.promptForChecklistCard(
+            title: "New Checklist",
+            card: draft
+        ) else {
+            return
+        }
+
+        boardStore.createChecklistCard(
+            title: card.title,
+            entries: card.entries,
+            at: originForNewCard(size: BoardStore.Defaults.checklistCardSize),
+            constrainedTo: canvasSize
+        )
+    }
+
+    private func createImageCard() {
+        guard let imageURL = CorkDialogs.chooseImageFile() else {
+            return
+        }
+
+        boardStore.createImageCard(
+            title: CorkDialogs.defaultImageTitle(for: imageURL),
+            source: .fileReference(imageURL),
+            at: originForNewCard(size: BoardStore.Defaults.imageCardSize),
+            constrainedTo: canvasSize
+        )
+    }
+
+    private func editSelectedItem() {
+        guard let selectedItem = boardStore.selectedItem else {
+            return
+        }
+
+        editItem(selectedItem.id)
+    }
+
+    private func editItem(_ itemID: BoardItem.ID) {
+        guard let item = boardStore.selectedBoard.items.first(where: { $0.id == itemID }) else {
+            return
+        }
+
+        switch item.content {
+        case .text(let card):
+            guard let editedCard = CorkDialogs.promptForTextCard(
+                title: "Edit Text Note",
+                card: card
+            ) else {
+                return
+            }
+
+            boardStore.updateTextCard(
+                item.id,
+                title: editedCard.title,
+                body: editedCard.body
+            )
+
+        case .checklist(let card):
+            guard let editedCard = CorkDialogs.promptForChecklistCard(
+                title: "Edit Checklist",
+                card: card
+            ) else {
+                return
+            }
+
+            boardStore.updateChecklistCard(
+                item.id,
+                title: editedCard.title,
+                entries: editedCard.entries
+            )
+
+        case .image(let card):
+            guard let editedCard = CorkDialogs.promptForImageTitle(
+                title: "Edit Image Card",
+                card: card
+            ) else {
+                return
+            }
+
+            boardStore.updateImageCard(
+                item.id,
+                title: editedCard.title,
+                source: editedCard.source
+            )
+        }
+    }
+
+    private func createBoard() {
+        guard let name = CorkDialogs.promptForBoardName(
+            title: "New Board",
+            message: "",
+            defaultName: "Untitled Board"
+        ) else {
+            return
+        }
+
+        boardStore.createBoard(name: name)
+    }
+
+    private func renameSelectedBoard() {
+        guard let name = CorkDialogs.promptForBoardName(
+            title: "Rename Board",
+            message: "",
+            defaultName: boardStore.selectedBoard.name
+        ) else {
+            return
+        }
+
+        boardStore.renameBoard(id: boardStore.selectedBoardID, name: name)
+    }
+
+    private func deleteSelectedBoard() {
+        guard boardStore.boards.count > 1,
+              CorkDialogs.confirmBoardDeletion(boardName: boardStore.selectedBoard.name)
+        else {
+            return
+        }
+
+        boardStore.deleteBoard(id: boardStore.selectedBoardID)
     }
 
     private func handleKeyDown(_ event: NSEvent, boardSize: BoardSize) -> Bool {
@@ -110,6 +261,15 @@ struct BoardView: View {
         BoardSize(width: size.width, height: size.height)
     }
 
+    private func originForNewCard(size: BoardSize) -> BoardPoint {
+        let offset = Double(boardStore.selectedBoard.items.count % 5) * 24
+
+        return BoardPoint(
+            x: max(12, ((canvasSize.width - size.width) / 2) + offset),
+            y: max(12, ((canvasSize.height - size.height) / 2) + offset)
+        )
+    }
+
     private var header: some View {
         HStack(spacing: 12) {
             Text(boardStore.selectedBoard.name)
@@ -126,9 +286,80 @@ struct BoardView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(.thinMaterial, in: Capsule())
+
+            cardCreationMenu
+
+            Button {
+                editSelectedItem()
+            } label: {
+                Image(systemName: "pencil")
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.borderless)
+            .disabled(boardStore.selectedItem == nil)
+            .help("Edit Selected Card")
+
+            boardActionsMenu
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
+    }
+
+    private var cardCreationMenu: some View {
+        Menu {
+            Button {
+                createTextCard()
+            } label: {
+                Label("Text Note", systemImage: "note.text.badge.plus")
+            }
+
+            Button {
+                createChecklistCard()
+            } label: {
+                Label("Checklist", systemImage: "checklist")
+            }
+
+            Button {
+                createImageCard()
+            } label: {
+                Label("Image", systemImage: "photo.badge.plus")
+            }
+        } label: {
+            Image(systemName: "plus")
+                .frame(width: 24, height: 24)
+        }
+        .menuStyle(.borderlessButton)
+        .help("Add Card")
+    }
+
+    private var boardActionsMenu: some View {
+        Menu {
+            Button {
+                createBoard()
+            } label: {
+                Label("New Board", systemImage: "plus.rectangle.on.rectangle")
+            }
+
+            Button {
+                renameSelectedBoard()
+            } label: {
+                Label("Rename Board", systemImage: "pencil")
+            }
+
+            Divider()
+
+            Button {
+                deleteSelectedBoard()
+            } label: {
+                Label("Delete Board", systemImage: "trash")
+            }
+            .disabled(boardStore.boards.count <= 1)
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .frame(width: 24, height: 24)
+        }
+        .menuStyle(.borderlessButton)
+        .help("Board Actions")
     }
 }
 

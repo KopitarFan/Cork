@@ -47,6 +47,7 @@ Current files:
 
 - `Sources/Cork/App/CorkApp.swift`
 - `Sources/Cork/App/AppCoordinator.swift`
+- `Sources/Cork/App/CorkDialogs.swift`
 - `Sources/Cork/App/MenuBarContent.swift`
 
 Responsibilities:
@@ -55,6 +56,7 @@ Responsibilities:
 - Create the menu bar surface.
 - Register global shortcuts.
 - Route user commands to the board store and panel controller.
+- Present native prompts for lightweight card and board editing.
 - Keep app-level state such as whether the board is visible.
 
 The shell should remain thin. It should not directly encode board data, perform imports, or know persistence details.
@@ -95,6 +97,8 @@ The panel controller should not know how board items are stored or rendered. It 
 
 Current files:
 
+- `Sources/Cork/Board/BoardKeyboardView.swift`
+- `Sources/Cork/Board/BoardMouseInputView.swift`
 - `Sources/Cork/Board/BoardView.swift`
 - `Sources/Cork/Board/BoardCardView.swift`
 
@@ -106,7 +110,9 @@ Guidelines:
 - Avoid navigation stacks, inspectors, and persistent sidebars in the default board.
 - Prefer contextual controls that appear when selecting or hovering over a card.
 - Keep card dimensions stable while dragging or editing.
-- Make keyboard actions first-class as selection support is added.
+- Make keyboard actions first-class.
+- Keep card and board editing lightweight, using native dialogs instead of persistent inspectors.
+- Route create, edit, duplicate, delete, move, and board lifecycle actions through `BoardStore`.
 
 ### Domain Model
 
@@ -155,6 +161,9 @@ Current persistence behavior:
 - Save all boards.
 - Save the selected board ID.
 - Save card frames and card content.
+- Save board names and board lifecycle changes.
+- Save created and edited text, checklist, and image cards.
+- Save local image cards as file references.
 - Restore state automatically on launch.
 - Fall back to sample boards if no saved state exists.
 - Debounce autosaves while cards are dragged.
@@ -206,23 +215,31 @@ classDiagram
     BoardItem --> BoardItemContent
 ```
 
-The first code slice implements text, checklist, and image placeholders. URL, file, and palette cards should be added through new `BoardItemContent` cases and narrow card views.
+The current app implements text, checklist, and image cards. Image cards can use bundled SF Symbols for samples or local file references for user-created images. URL, file, and palette cards should be added through new `BoardItemContent` cases and narrow card views.
 
 ## Commands
 
-As features grow, Cork should move toward explicit board commands rather than letting views mutate arbitrary state.
+Views should use explicit board commands rather than mutating arbitrary state. This keeps menus, hot keys, drag-and-drop, Apple Shortcuts, and future automation hooks pointed at the same behavior.
 
 Examples:
 
 - `selectBoard(id:)`
-- `createTextCard(on:at:)`
-- `createChecklistCard(on:at:)`
-- `moveItem(id:to:)`
-- `resizeItem(id:to:)`
-- `deleteItem(id:)`
+- `createBoard(name:)`
+- `renameBoard(id:name:)`
+- `deleteBoard(id:)`
+- `createTextCard(title:body:at:)`
+- `createChecklistCard(title:entries:at:)`
+- `createImageCard(title:source:at:)`
+- `updateTextCard(_:title:body:)`
+- `updateChecklistCard(_:title:entries:)`
+- `updateImageCard(_:title:source:)`
+- `updateItemPosition(_:to:)`
+- `moveSelectedItem(by:)`
+- `duplicateItem(_:)`
+- `deleteItem(_:)`
 - `importDroppedItems(_:at:)`
 
-This keeps menus, hot keys, drag-and-drop, Apple Shortcuts, and future automation hooks pointed at the same behavior.
+The command layer currently lives in `BoardStore`. If it grows too large, the next extraction should be a small command facade around the store rather than direct view mutation.
 
 ## Drag and Drop
 
@@ -270,6 +287,8 @@ Keep tests concentrated around behavior that should not regress:
 - Board selection.
 - Card movement and resizing bounds.
 - Card creation commands.
+- Card editing commands.
+- Board creation, rename, and deletion commands.
 - Persistence round trips.
 - Import intent resolution.
 
