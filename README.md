@@ -21,7 +21,7 @@ Opening Cork should feel like pulling back a curtain, not launching an app.
 
 ## Current Status
 
-The project currently has the first runnable foundation, persistence layer, card interaction layer, and real card creation flow:
+The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, and drag-and-drop imports:
 
 - Menu bar app.
 - Global keyboard shortcut: `Command` + `Option` + `B`.
@@ -36,14 +36,19 @@ The project currently has the first runnable foundation, persistence layer, card
 - Duplicate, delete, and edit actions for cards.
 - Context menus for card actions, including double-click edit.
 - Board creation, rename, deletion, and menu-bar board switching.
+- Drag-and-drop image imports from Finder.
+- Drag-and-drop plain text imports.
+- Drag-and-drop URL imports as lightweight text placeholder cards.
+- Drag-and-drop file imports as lightweight text placeholder cards.
 - JSON-backed persistence in Application Support.
 - Autosave for board selection, board changes, card creation, card editing, card movement, and card actions.
 - A separate `CorkCore` target for board and card models.
-- Unit tests for board selection, card movement, card creation, card editing, board lifecycle commands, snapshot encoding, JSON persistence, and autosave.
+- Unit tests for board selection, card movement, card creation, card editing, board lifecycle commands, import resolution, snapshot encoding, JSON persistence, and autosave.
 
 Not implemented yet:
 
-- Drag-and-drop imports.
+- Dedicated URL and file card renderers.
+- Copied asset storage for imported files and remote images.
 - Card resizing.
 - Packaged `.app` release workflow.
 
@@ -98,17 +103,16 @@ Cork targets modern macOS and prefers native Apple APIs:
 - Carbon hot keys for the first global shortcut.
 - A small JSON-backed persistence adapter for local board state.
 
-The codebase is intentionally split so product logic can be tested without AppKit and SwiftUI. `CorkCore` owns the board model. The app target owns presentation, window behavior, hot keys, and eventually drag-and-drop import adapters.
+The codebase is intentionally split so product logic can be tested without AppKit and SwiftUI. `CorkCore` owns the board model and import intent resolution. The app target owns presentation, window behavior, hot keys, and AppKit drag-and-drop adapters.
 
 ## Next Development Slice
 
-The next slice is Milestone 5: drag-and-drop imports:
+The next slice is Milestone 6: resizing and layout polish:
 
-- Accept image drops from Finder and Safari.
-- Accept file drops from Finder.
-- Accept URL drops from browsers.
-- Accept plain text drops.
-- Convert dropped providers into card creation intents.
-- Store copied assets in Application Support.
+- Add card resizing.
+- Add minimum and maximum card sizes.
+- Add edge-aware movement bounds.
+- Improve hover and selected states.
+- Tune drag and resize feel.
 
 See [docs/milestones.md](docs/milestones.md) for the broader build path.

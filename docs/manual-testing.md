@@ -1,8 +1,8 @@
 # Manual Testing Guide
 
-This guide covers the awkward macOS cases that are hard to prove with unit tests: full-screen Spaces, multiple desktops, menu bar behavior, global hot keys, display geometry, and user-facing card creation flows.
+This guide covers the awkward macOS cases that are hard to prove with unit tests: full-screen Spaces, multiple desktops, menu bar behavior, global hot keys, display geometry, user-facing card creation flows, and drag-and-drop imports.
 
-Use the relevant sections before closing each milestone and whenever Cork's windowing, hot-key, menu bar, persistence, or card creation behavior changes.
+Use the relevant sections before closing each milestone and whenever Cork's windowing, hot-key, menu bar, persistence, card creation, or import behavior changes.
 
 ## Test Setup
 
@@ -156,6 +156,52 @@ Failure notes:
 - Whether Cork failed to show the board after a successful creation.
 - Whether commands affected the wrong board.
 - Whether the menu dismissed before the native dialog became usable.
+
+## Drag And Drop Imports
+
+Run this section for Milestone 5 and whenever import resolution, persistence, or card rendering changes.
+
+Steps:
+
+1. Launch Cork with `swift run Cork`.
+2. Show the board.
+3. Drag a `.png` or `.jpg` file from Finder onto the board.
+4. Drag two image files from Finder at the same time.
+5. Drag a non-image file, such as `.pdf`, `.txt`, or `.md`, from Finder.
+6. Drag selected plain text from another app onto the board.
+7. Drag a URL from a browser address bar onto the board.
+8. Move each imported card.
+9. Quit Cork from the menu bar.
+10. Relaunch Cork.
+
+Expected:
+
+- Image file drops create image cards.
+- Image cards appear near the drop point and show thumbnails while the source file is available.
+- Multiple file drops create multiple cards staggered from the drop point.
+- Non-image file drops create text placeholder cards containing the file path.
+- Plain text drops create text cards.
+- URL drops create text placeholder cards containing the URL.
+- Imported cards are selected after creation.
+- Imported cards can be moved, deleted, and duplicated like manually created cards.
+- Imported card positions and content persist across relaunch.
+- Unsupported or empty drops do not crash Cork or block future drops.
+
+Known current limitations:
+
+- URL drops are placeholder text cards, not dedicated URL cards.
+- Non-image file drops are placeholder text cards, not dedicated file cards.
+- Local files are referenced, not copied into Application Support.
+- If a referenced image file is moved or deleted, Cork cannot render its thumbnail.
+
+Failure notes:
+
+- Source app and type: Finder image, Finder file, browser URL, selected text.
+- Whether the card appeared at the drop point.
+- Whether the drop created the wrong card type.
+- Whether multiple dropped files preserved a sensible order.
+- Whether imported content disappeared after relaunch.
+- Whether a referenced source file moved between runs.
 
 ## Full-Screen App Spaces
 
@@ -401,6 +447,7 @@ Baseline smoke test:
 Real card creation:
 Board management:
 Menu bar creation:
+Drag and drop imports:
 Full-screen Spaces:
 Multiple desktops:
 Multiple monitors:

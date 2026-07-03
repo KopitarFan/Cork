@@ -53,6 +53,13 @@ struct BoardView: View {
                         },
                         onDelete: { itemID in
                             boardStore.deleteItem(itemID)
+                        },
+                        onImport: { intents, origin in
+                            boardStore.importItems(
+                                intents,
+                                at: origin,
+                                constrainedTo: boardSize(from: proxy.size)
+                            )
                         }
                     )
                     .frame(width: proxy.size.width, height: proxy.size.height)

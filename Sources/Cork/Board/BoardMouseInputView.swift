@@ -12,6 +12,7 @@ struct BoardMouseInputView: NSViewRepresentable {
     let onMove: (BoardItem.ID, BoardPoint) -> Void
     let onDuplicate: (BoardItem.ID) -> Void
     let onDelete: (BoardItem.ID) -> Void
+    let onImport: ([BoardImportIntent], BoardPoint) -> Void
 
     func makeNSView(context: Context) -> BoardMouseCatcherView {
         let view = BoardMouseCatcherView()
@@ -29,6 +30,7 @@ struct BoardMouseInputView: NSViewRepresentable {
         nsView.onMove = onMove
         nsView.onDuplicate = onDuplicate
         nsView.onDelete = onDelete
+        nsView.onImport = onImport
     }
 }
 
@@ -42,11 +44,23 @@ final class BoardMouseCatcherView: NSView {
     var onMove: ((BoardItem.ID, BoardPoint) -> Void)?
     var onDuplicate: ((BoardItem.ID) -> Void)?
     var onDelete: ((BoardItem.ID) -> Void)?
+    var onImport: (([BoardImportIntent], BoardPoint) -> Void)?
 
+    private let dropResolver = BoardDropResolver()
     private var draggedItemID: BoardItem.ID?
     private var dragStartLocation: BoardPoint?
     private var dragStartOrigin: BoardPoint?
     private var contextItemID: BoardItem.ID?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        registerForDraggedTypes(BoardDropResolver.supportedPasteboardTypes)
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        registerForDraggedTypes(BoardDropResolver.supportedPasteboardTypes)
+    }
 
     override var isFlipped: Bool {
         true
@@ -136,6 +150,25 @@ final class BoardMouseCatcherView: NSView {
         menu.popUp(positioning: nil, at: location.nsPoint, in: self)
     }
 
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        dropOperation(for: sender)
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        dropOperation(for: sender)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let intents = dropResolver.importIntents(from: sender.draggingPasteboard)
+
+        guard !intents.isEmpty else {
+            return false
+        }
+
+        onImport?(intents, boardPoint(for: sender))
+        return true
+    }
+
     @objc private func editContextItem() {
         guard let contextItemID else {
             return
@@ -166,6 +199,15 @@ final class BoardMouseCatcherView: NSView {
     private func boardPoint(for event: NSEvent) -> BoardPoint {
         let location = convert(event.locationInWindow, from: nil)
         return BoardPoint(x: location.x, y: location.y)
+    }
+
+    private func boardPoint(for draggingInfo: NSDraggingInfo) -> BoardPoint {
+        let location = convert(draggingInfo.draggingLocation, from: nil)
+        return BoardPoint(x: location.x, y: location.y)
+    }
+
+    private func dropOperation(for draggingInfo: NSDraggingInfo) -> NSDragOperation {
+        dropResolver.importIntents(from: draggingInfo.draggingPasteboard).isEmpty ? [] : .copy
     }
 
     private func item(at point: BoardPoint) -> BoardItem? {
