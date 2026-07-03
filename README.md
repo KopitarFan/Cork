@@ -21,7 +21,7 @@ Opening Cork should feel like pulling back a curtain, not launching an app.
 
 ## Current Status
 
-The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, and drag-and-drop imports:
+The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, drag-and-drop imports, and resizing/layout polish:
 
 - Menu bar app.
 - Global keyboard shortcut: `Command` + `Option` + `B`.
@@ -40,16 +40,21 @@ The project currently has the first runnable foundation, persistence layer, card
 - Drag-and-drop plain text imports.
 - Drag-and-drop URL imports as lightweight text placeholder cards.
 - Drag-and-drop file imports as lightweight text placeholder cards.
+- Resizable cards with a selected-card bottom-right handle.
+- Minimum and maximum card sizes.
+- Edge-aware movement and resizing bounds.
+- Hover and selected states for direct manipulation.
+- Downsampled cached thumbnails for large local image cards.
 - JSON-backed persistence in Application Support.
-- Autosave for board selection, board changes, card creation, card editing, card movement, and card actions.
+- Autosave for board selection, board changes, card creation, card editing, card movement, card resizing, and card actions.
 - A separate `CorkCore` target for board and card models.
-- Unit tests for board selection, card movement, card creation, card editing, board lifecycle commands, import resolution, snapshot encoding, JSON persistence, and autosave.
+- Unit tests for board selection, card movement, card resizing, card creation, card editing, board lifecycle commands, import resolution, snapshot encoding, JSON persistence, and autosave.
 
 Not implemented yet:
 
 - Dedicated URL and file card renderers.
 - Copied asset storage for imported files and remote images.
-- Card resizing.
+- Markdown notes and color palette cards.
 - Packaged `.app` release workflow.
 
 ## Run
@@ -107,12 +112,12 @@ The codebase is intentionally split so product logic can be tested without AppKi
 
 ## Next Development Slice
 
-The next slice is Milestone 6: resizing and layout polish:
+The next slice is Milestone 7: more card types:
 
-- Add card resizing.
-- Add minimum and maximum card sizes.
-- Add edge-aware movement bounds.
-- Improve hover and selected states.
-- Tune drag and resize feel.
+- Add Markdown notes.
+- Add dedicated URL cards.
+- Add dedicated file cards.
+- Add color palette cards.
+- Keep rich previews optional and cached.
 
 See [docs/milestones.md](docs/milestones.md) for the broader build path.

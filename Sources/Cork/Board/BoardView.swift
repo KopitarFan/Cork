@@ -5,6 +5,7 @@ import SwiftUI
 struct BoardView: View {
     @ObservedObject var boardStore: BoardStore
     @State private var canvasSize = BoardSize(width: 900, height: 520)
+    @State private var hoveredItemID: BoardItem.ID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,7 +22,8 @@ struct BoardView: View {
                     ForEach(boardStore.selectedBoard.items) { item in
                         BoardCardView(
                             item: item,
-                            isSelected: item.id == boardStore.selectedItemID
+                            isSelected: item.id == boardStore.selectedItemID,
+                            isHovered: item.id == hoveredItemID
                         )
                     }
 
@@ -35,6 +37,9 @@ struct BoardView: View {
                         onClearSelection: {
                             boardStore.clearSelection()
                         },
+                        onHoverChange: { itemID in
+                            hoveredItemID = itemID
+                        },
                         onEdit: { itemID in
                             editItem(itemID)
                         },
@@ -42,6 +47,13 @@ struct BoardView: View {
                             boardStore.updateItemPosition(
                                 itemID,
                                 to: origin,
+                                constrainedTo: boardSize(from: proxy.size)
+                            )
+                        },
+                        onResize: { itemID, size in
+                            boardStore.resizeItem(
+                                itemID,
+                                to: size,
                                 constrainedTo: boardSize(from: proxy.size)
                             )
                         },

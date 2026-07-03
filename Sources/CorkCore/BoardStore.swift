@@ -8,6 +8,8 @@ public final class BoardStore: ObservableObject {
         public static let textCardSize = BoardSize(width: 260, height: 190)
         public static let checklistCardSize = BoardSize(width: 240, height: 210)
         public static let imageCardSize = BoardSize(width: 230, height: 170)
+        public static let minimumCardSize = BoardSize(width: 160, height: 120)
+        public static let maximumCardSize = BoardSize(width: 640, height: 520)
     }
 
     @Published public private(set) var boards: [CorkBoard]
@@ -351,6 +353,60 @@ public final class BoardStore: ObservableObject {
     }
 
     @discardableResult
+    public func resizeItem(
+        _ id: BoardItem.ID,
+        to size: BoardSize,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) -> Bool {
+        let didUpdate = updateSelectedBoard { board in
+            guard let itemIndex = board.items.firstIndex(where: { $0.id == id }) else {
+                return false
+            }
+
+            let currentFrame = board.items[itemIndex].frame
+            let nextSize = Self.clampedSize(
+                size,
+                origin: currentFrame.origin,
+                canvasSize: canvasSize
+            )
+            let nextFrame = BoardRect(
+                origin: Self.clampedOrigin(
+                    currentFrame.origin,
+                    itemSize: nextSize,
+                    canvasSize: canvasSize
+                ),
+                size: nextSize
+            )
+
+            guard currentFrame != nextFrame else {
+                return false
+            }
+
+            board.items[itemIndex].frame = nextFrame
+            board.updatedAt = Date()
+            return true
+        }
+
+        if didUpdate {
+            scheduleAutosave()
+        }
+
+        return didUpdate
+    }
+
+    @discardableResult
+    public func resizeSelectedItem(
+        to size: BoardSize,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) -> Bool {
+        guard let selectedItemID else {
+            return false
+        }
+
+        return resizeItem(selectedItemID, to: size, constrainedTo: canvasSize)
+    }
+
+    @discardableResult
     public func moveSelectedItem(
         by delta: BoardPoint,
         constrainedTo canvasSize: BoardSize? = nil
@@ -547,19 +603,53 @@ public final class BoardStore: ObservableObject {
         }
     }
 
+    private static func clampedSize(
+        _ size: BoardSize,
+        origin: BoardPoint,
+        canvasSize: BoardSize?
+    ) -> BoardSize {
+        let width = min(
+            Defaults.maximumCardSize.width,
+            max(Defaults.minimumCardSize.width, size.width)
+        )
+        let height = min(
+            Defaults.maximumCardSize.height,
+            max(Defaults.minimumCardSize.height, size.height)
+        )
+
+        guard let canvasSize else {
+            return BoardSize(width: width, height: height)
+        }
+
+        let maximumWidth = max(
+            Defaults.minimumCardSize.width,
+            canvasSize.width - origin.x - canvasInset
+        )
+        let maximumHeight = max(
+            Defaults.minimumCardSize.height,
+            canvasSize.height - origin.y - canvasInset
+        )
+
+        return BoardSize(
+            width: min(width, maximumWidth),
+            height: min(height, maximumHeight)
+        )
+    }
+
     private static func clampedOrigin(
         _ origin: BoardPoint,
         itemSize: BoardSize,
         canvasSize: BoardSize?
     ) -> BoardPoint {
-        let minimum = 12.0
-        let maximumX = canvasSize.map { max(minimum, $0.width - itemSize.width - minimum) }
-        let maximumY = canvasSize.map { max(minimum, $0.height - itemSize.height - minimum) }
-        let clampedX = min(maximumX ?? .greatestFiniteMagnitude, max(minimum, origin.x))
-        let clampedY = min(maximumY ?? .greatestFiniteMagnitude, max(minimum, origin.y))
+        let maximumX = canvasSize.map { max(canvasInset, $0.width - itemSize.width - canvasInset) }
+        let maximumY = canvasSize.map { max(canvasInset, $0.height - itemSize.height - canvasInset) }
+        let clampedX = min(maximumX ?? .greatestFiniteMagnitude, max(canvasInset, origin.x))
+        let clampedY = min(maximumY ?? .greatestFiniteMagnitude, max(canvasInset, origin.y))
 
         return BoardPoint(x: clampedX, y: clampedY)
     }
+
+    private static let canvasInset = 12.0
 
     private func sanitizedTitle(_ value: String, fallback: String) -> String {
         let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)

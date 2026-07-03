@@ -8,8 +8,10 @@ struct BoardMouseInputView: NSViewRepresentable {
     let boardSize: BoardSize
     let onSelect: (BoardItem.ID) -> Void
     let onClearSelection: () -> Void
+    let onHoverChange: (BoardItem.ID?) -> Void
     let onEdit: (BoardItem.ID) -> Void
     let onMove: (BoardItem.ID, BoardPoint) -> Void
+    let onResize: (BoardItem.ID, BoardSize) -> Void
     let onDuplicate: (BoardItem.ID) -> Void
     let onDelete: (BoardItem.ID) -> Void
     let onImport: ([BoardImportIntent], BoardPoint) -> Void
@@ -26,8 +28,10 @@ struct BoardMouseInputView: NSViewRepresentable {
         nsView.boardSize = boardSize
         nsView.onSelect = onSelect
         nsView.onClearSelection = onClearSelection
+        nsView.onHoverChange = onHoverChange
         nsView.onEdit = onEdit
         nsView.onMove = onMove
+        nsView.onResize = onResize
         nsView.onDuplicate = onDuplicate
         nsView.onDelete = onDelete
         nsView.onImport = onImport
@@ -40,17 +44,19 @@ final class BoardMouseCatcherView: NSView {
     var boardSize = BoardSize(width: 0, height: 0)
     var onSelect: ((BoardItem.ID) -> Void)?
     var onClearSelection: (() -> Void)?
+    var onHoverChange: ((BoardItem.ID?) -> Void)?
     var onEdit: ((BoardItem.ID) -> Void)?
     var onMove: ((BoardItem.ID, BoardPoint) -> Void)?
+    var onResize: ((BoardItem.ID, BoardSize) -> Void)?
     var onDuplicate: ((BoardItem.ID) -> Void)?
     var onDelete: ((BoardItem.ID) -> Void)?
     var onImport: (([BoardImportIntent], BoardPoint) -> Void)?
 
     private let dropResolver = BoardDropResolver()
-    private var draggedItemID: BoardItem.ID?
-    private var dragStartLocation: BoardPoint?
-    private var dragStartOrigin: BoardPoint?
+    private var activeInteraction: ActiveInteraction?
+    private var hoveredItemID: BoardItem.ID?
     private var contextItemID: BoardItem.ID?
+    private var trackingArea: NSTrackingArea?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -66,11 +72,44 @@ final class BoardMouseCatcherView: NSView {
         true
     }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        window?.acceptsMouseMovedEvents = true
+    }
+
+    override func updateTrackingAreas() {
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+
+        let trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.activeInKeyWindow, .inVisibleRect, .mouseMoved, .mouseEnteredAndExited],
+            owner: self
+        )
+        addTrackingArea(trackingArea)
+        self.trackingArea = trackingArea
+
+        super.updateTrackingAreas()
+    }
+
     override func mouseDown(with event: NSEvent) {
         let location = boardPoint(for: event)
 
+        if let item = resizeItem(at: location) {
+            onSelect?(item.id)
+            activeInteraction = .resize(
+                id: item.id,
+                startLocation: location,
+                startSize: item.frame.size
+            )
+            updateCursor(at: location)
+            return
+        }
+
         guard let item = item(at: location) else {
             onClearSelection?()
+            setHoveredItemID(nil)
             return
         }
 
@@ -81,32 +120,55 @@ final class BoardMouseCatcherView: NSView {
             return
         }
 
-        draggedItemID = item.id
-        dragStartLocation = location
-        dragStartOrigin = item.frame.origin
+        activeInteraction = .move(
+            id: item.id,
+            startLocation: location,
+            startOrigin: item.frame.origin
+        )
+        updateCursor(at: location)
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard let draggedItemID,
-              let dragStartLocation,
-              let dragStartOrigin
-        else {
+        guard let activeInteraction else {
             return
         }
 
         let location = boardPoint(for: event)
-        let nextOrigin = BoardPoint(
-            x: dragStartOrigin.x + location.x - dragStartLocation.x,
-            y: dragStartOrigin.y + location.y - dragStartLocation.y
-        )
 
-        onMove?(draggedItemID, nextOrigin)
+        switch activeInteraction {
+        case .move(let id, let startLocation, let startOrigin):
+            let nextOrigin = BoardPoint(
+                x: startOrigin.x + location.x - startLocation.x,
+                y: startOrigin.y + location.y - startLocation.y
+            )
+            onMove?(id, nextOrigin)
+        case .resize(let id, let startLocation, let startSize):
+            let nextSize = BoardSize(
+                width: startSize.width + location.x - startLocation.x,
+                height: startSize.height + location.y - startLocation.y
+            )
+            onResize?(id, nextSize)
+        }
+
+        updateCursor(at: location)
     }
 
     override func mouseUp(with event: NSEvent) {
-        draggedItemID = nil
-        dragStartLocation = nil
-        dragStartOrigin = nil
+        let location = boardPoint(for: event)
+        activeInteraction = nil
+        updateHover(at: location)
+        updateCursor(at: location)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        let location = boardPoint(for: event)
+        updateHover(at: location)
+        updateCursor(at: location)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        setHoveredItemID(nil)
+        NSCursor.arrow.set()
     }
 
     override func rightMouseDown(with event: NSEvent) {
@@ -201,6 +263,39 @@ final class BoardMouseCatcherView: NSView {
         return BoardPoint(x: location.x, y: location.y)
     }
 
+    private func updateHover(at point: BoardPoint) {
+        setHoveredItemID(item(at: point)?.id)
+    }
+
+    private func setHoveredItemID(_ itemID: BoardItem.ID?) {
+        guard hoveredItemID != itemID else {
+            return
+        }
+
+        hoveredItemID = itemID
+        onHoverChange?(itemID)
+    }
+
+    private func updateCursor(at point: BoardPoint) {
+        if case .resize = activeInteraction {
+            NSCursor.resizeLeftRight.set()
+            return
+        }
+
+        if case .move = activeInteraction {
+            NSCursor.closedHand.set()
+            return
+        }
+
+        if resizeItem(at: point) != nil {
+            NSCursor.resizeLeftRight.set()
+        } else if item(at: point) != nil {
+            NSCursor.openHand.set()
+        } else {
+            NSCursor.arrow.set()
+        }
+    }
+
     private func boardPoint(for draggingInfo: NSDraggingInfo) -> BoardPoint {
         let location = convert(draggingInfo.draggingLocation, from: nil)
         return BoardPoint(x: location.x, y: location.y)
@@ -208,6 +303,16 @@ final class BoardMouseCatcherView: NSView {
 
     private func dropOperation(for draggingInfo: NSDraggingInfo) -> NSDragOperation {
         dropResolver.importIntents(from: draggingInfo.draggingPasteboard).isEmpty ? [] : .copy
+    }
+
+    private func resizeItem(at point: BoardPoint) -> BoardItem? {
+        guard let selectedItemID else {
+            return nil
+        }
+
+        return items.first { item in
+            item.id == selectedItemID && item.frame.containsResizeHandle(point)
+        }
     }
 
     private func item(at point: BoardPoint) -> BoardItem? {
@@ -227,12 +332,33 @@ final class BoardMouseCatcherView: NSView {
     }
 }
 
+private enum ActiveInteraction {
+    case move(
+        id: BoardItem.ID,
+        startLocation: BoardPoint,
+        startOrigin: BoardPoint
+    )
+    case resize(
+        id: BoardItem.ID,
+        startLocation: BoardPoint,
+        startSize: BoardSize
+    )
+}
+
 private extension BoardRect {
     func contains(_ point: BoardPoint) -> Bool {
         point.x >= origin.x &&
         point.x <= origin.x + size.width &&
         point.y >= origin.y &&
         point.y <= origin.y + size.height
+    }
+
+    func containsResizeHandle(_ point: BoardPoint) -> Bool {
+        let handleSize = 24.0
+        return point.x >= origin.x + size.width - handleSize &&
+            point.x <= origin.x + size.width &&
+            point.y >= origin.y + size.height - handleSize &&
+            point.y <= origin.y + size.height
     }
 }
 
