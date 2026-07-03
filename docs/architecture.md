@@ -102,6 +102,7 @@ Current files:
 - `Sources/Cork/Board/BoardMouseInputView.swift`
 - `Sources/Cork/Board/BoardView.swift`
 - `Sources/Cork/Board/BoardCardView.swift`
+- `Sources/Cork/Board/FileImageThumbnailView.swift`
 
 The board UI is SwiftUI. It should prioritize direct manipulation and glanceability.
 
@@ -114,6 +115,8 @@ Guidelines:
 - Make keyboard actions first-class.
 - Keep card and board editing lightweight, using native dialogs instead of persistent inspectors.
 - Route create, edit, duplicate, delete, move, and board lifecycle actions through `BoardStore`.
+- Route resizing through `BoardStore` so pointer, keyboard, and future command surfaces share one layout policy.
+- Render file-backed images from cached downsampled thumbnails instead of decoding original files from SwiftUI body evaluation.
 
 ### Domain Model
 
@@ -168,6 +171,7 @@ Current persistence behavior:
 - Save card frames and card content.
 - Save board names and board lifecycle changes.
 - Save created and edited text, checklist, and image cards.
+- Save resized card frames.
 - Save local image cards as file references.
 - Save dropped image cards as local file references.
 - Save dropped text, URL, and file placeholder cards as text cards.
@@ -241,6 +245,8 @@ Examples:
 - `updateChecklistCard(_:title:entries:)`
 - `updateImageCard(_:title:source:)`
 - `updateItemPosition(_:to:)`
+- `resizeItem(_:to:)`
+- `resizeSelectedItem(to:)`
 - `moveSelectedItem(by:)`
 - `duplicateItem(_:)`
 - `deleteItem(_:)`
@@ -272,6 +278,7 @@ Current drop types:
 Current behavior:
 
 - Image file drops create image cards backed by file references.
+- Image file cards render downsampled cached thumbnails for interactive performance.
 - Plain text drops create text cards.
 - Web URL drops create lightweight text placeholder cards.
 - Non-image file drops create lightweight text placeholder cards.
@@ -280,6 +287,7 @@ Current behavior:
 Copy-versus-reference behavior should remain explicit:
 
 - Local files currently start as references.
+- The thumbnail cache is an in-memory render cache, not durable copied asset storage.
 - Copied-file support belongs in an asset storage adapter under Application Support.
 - Images dropped from the web should eventually be copied into Cork's app support storage.
 - URLs should become dedicated URL cards, eventually with rich previews.
@@ -308,6 +316,7 @@ Keep tests concentrated around behavior that should not regress:
 - Board creation, rename, and deletion commands.
 - Persistence round trips.
 - Import intent resolution.
+- Large-image interaction behavior through manual QA.
 
 UI animation and AppKit panel behavior can remain manually verified early, then gain focused tests once packaging and UI structure settle.
 

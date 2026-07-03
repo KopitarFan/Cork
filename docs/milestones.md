@@ -242,6 +242,10 @@ Deferred:
 
 ## Iteration 6: Resizing and Layout Polish
 
+Status: complete.
+
+Completed: 2026-07-02.
+
 Goal: cards feel stable, direct, and pleasant under repeated use.
 
 Scope:
@@ -259,6 +263,32 @@ Exit criteria:
 - Cards remain within usable board bounds.
 - Text does not overflow awkwardly in normal card sizes.
 - Repeated drag and resize interactions feel smooth.
+
+Completed:
+
+- Added `BoardStore.resizeItem(_:to:constrainedTo:)`.
+- Added `BoardStore.resizeSelectedItem(to:constrainedTo:)`.
+- Added minimum and maximum card size defaults.
+- Added edge-aware resize clamping that keeps cards inside the board.
+- Added a selected-card bottom-right resize handle.
+- Added pointer hover state and drag/resize cursor feedback.
+- Improved card content clipping so text, checklists, and images stay inside resized frames.
+- Replaced full-size image decoding during rendering with a downsampled thumbnail view backed by `ImageIO` and `NSCache`.
+- Added tests for resize bounds, min/max sizes, selected-item resizing, autosave, debounced resize autosave, and persistence round trips.
+
+Closeout verification:
+
+- Manual resizing and layout-polish testing passed.
+- Text, checklist, and image cards resize without layout jumps.
+- Cards remain within board bounds when moved and resized.
+- Large local image cards can be dragged and resized without the earlier slowdown.
+- Resized card frames persist across relaunch.
+- Step 7 automated verification passed: `swift test`, `swift build`, and `git diff --check`.
+- `swift test` passed with 92 tests and 0 failures.
+
+Deferred:
+
+- Snap or alignment assistance. The current direct-manipulation behavior feels sufficient for this slice.
 
 ## Iteration 7: More Card Types
 

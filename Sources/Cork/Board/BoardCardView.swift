@@ -5,6 +5,7 @@ import SwiftUI
 struct BoardCardView: View {
     let item: BoardItem
     let isSelected: Bool
+    let isHovered: Bool
 
     var body: some View {
         cardContent
@@ -13,7 +14,7 @@ struct BoardCardView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(.primary.opacity(isSelected ? 0.12 : 0.08), lineWidth: 1)
+                    .stroke(.primary.opacity(isSelected || isHovered ? 0.14 : 0.08), lineWidth: 1)
             }
             .overlay {
                 if isSelected {
@@ -22,7 +23,18 @@ struct BoardCardView: View {
                         .padding(1)
                 }
             }
-            .shadow(color: .black.opacity(isSelected ? 0.2 : 0.14), radius: isSelected ? 14 : 10, x: 0, y: 5)
+            .overlay(alignment: .bottomTrailing) {
+                if isSelected {
+                    ResizeHandle()
+                        .padding(5)
+                }
+            }
+            .shadow(
+                color: .black.opacity(isSelected ? 0.2 : (isHovered ? 0.17 : 0.14)),
+                radius: isSelected ? 14 : (isHovered ? 12 : 10),
+                x: 0,
+                y: isSelected || isHovered ? 6 : 5
+            )
             .offset(x: item.frame.origin.x, y: item.frame.origin.y)
             .zIndex(isSelected ? 2 : 1)
             .allowsHitTesting(false)
@@ -38,10 +50,12 @@ struct BoardCardView: View {
                 Text(card.body)
                     .font(.system(.body, design: .rounded))
                     .foregroundStyle(.primary)
-                    .lineLimit(5)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             .padding(14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .clipped()
 
         case .checklist(let card):
             VStack(alignment: .leading, spacing: 10) {
@@ -65,6 +79,8 @@ struct BoardCardView: View {
                 }
             }
             .padding(14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .clipped()
 
         case .image(let card):
             VStack(spacing: 10) {
@@ -78,6 +94,8 @@ struct BoardCardView: View {
                     .lineLimit(1)
             }
             .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
         }
     }
 
@@ -89,13 +107,7 @@ struct BoardCardView: View {
 
             switch card.source {
             case .fileReference(let url):
-                if let image = NSImage(contentsOf: url) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    placeholderImage
-                }
+                FileImageThumbnailView(url: url)
             case .bundledSymbol(let symbolName):
                 Image(systemName: symbolName)
                     .font(.system(size: 40, weight: .medium))
@@ -120,6 +132,32 @@ struct BoardCardView: View {
             AnyShapeStyle(Color(nsColor: .selectedContentBackgroundColor).opacity(0.14))
         case .image:
             AnyShapeStyle(Color(nsColor: .underPageBackgroundColor).opacity(0.92))
+        }
+    }
+}
+
+private struct ResizeHandle: View {
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(.regularMaterial)
+
+            Canvas { context, size in
+                let color = Color.secondary.opacity(0.72)
+
+                for offset in [CGFloat(4), CGFloat(8), CGFloat(12)] {
+                    var path = Path()
+                    path.move(to: CGPoint(x: size.width - offset, y: size.height))
+                    path.addLine(to: CGPoint(x: size.width, y: size.height - offset))
+                    context.stroke(path, with: .color(color), lineWidth: 1.2)
+                }
+            }
+            .padding(3)
+        }
+        .frame(width: 18, height: 18)
+        .overlay {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .stroke(.primary.opacity(0.12), lineWidth: 1)
         }
     }
 }

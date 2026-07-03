@@ -81,6 +81,37 @@ final class PersistenceAcceptanceTests: XCTestCase {
         )
     }
 
+    func testResizedCardFramePersistsThroughRepositoryAndFreshStore() throws {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: BoardPoint(x: 10, y: 10),
+                size: BoardSize(width: 120, height: 120)
+            ),
+            content: .text(TextCard(title: "Note", body: "Body"))
+        )
+        let board = CorkBoard(name: "Board", items: [item])
+        let repository = JSONBoardRepository(fileURL: makeTemporaryFileURL())
+        let store = BoardStore(
+            boards: [board],
+            repository: repository,
+            autosaveDelay: 0
+        )
+
+        store.resizeItem(item.id, to: BoardSize(width: 280, height: 220))
+
+        let loadedSnapshot = try XCTUnwrap(repository.loadSnapshot())
+        let restoredStore = BoardStore(
+            snapshot: loadedSnapshot,
+            repository: repository,
+            autosaveDelay: 0
+        )
+
+        XCTAssertEqual(
+            restoredStore.selectedBoard.items[0].frame.size,
+            BoardSize(width: 280, height: 220)
+        )
+    }
+
     func testRepositoryRoundTripPreservesFullBoardLibrary() throws {
         let first = CorkBoard(
             name: "Writing",

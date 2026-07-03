@@ -1,8 +1,8 @@
 # Manual Testing Guide
 
-This guide covers the awkward macOS cases that are hard to prove with unit tests: full-screen Spaces, multiple desktops, menu bar behavior, global hot keys, display geometry, user-facing card creation flows, and drag-and-drop imports.
+This guide covers the awkward macOS cases that are hard to prove with unit tests: full-screen Spaces, multiple desktops, menu bar behavior, global hot keys, display geometry, user-facing card creation flows, drag-and-drop imports, and resizing/layout polish.
 
-Use the relevant sections before closing each milestone and whenever Cork's windowing, hot-key, menu bar, persistence, card creation, or import behavior changes.
+Use the relevant sections before closing each milestone and whenever Cork's windowing, hot-key, menu bar, persistence, card creation, import, or card layout behavior changes.
 
 ## Test Setup
 
@@ -202,6 +202,57 @@ Failure notes:
 - Whether multiple dropped files preserved a sensible order.
 - Whether imported content disappeared after relaunch.
 - Whether a referenced source file moved between runs.
+
+## Card Resizing and Layout Polish
+
+Run this section for Milestone 6 and whenever pointer interaction, card rendering, or layout bounds change.
+
+Steps:
+
+1. Launch Cork with `swift run Cork`.
+2. Show the board.
+3. Select a text card.
+4. Drag the bottom-right resize handle larger and smaller several times.
+5. Repeat with a checklist card.
+6. Repeat with an image card.
+7. Move and resize cards near the top, bottom, left, and right board edges.
+8. Resize a card to the smallest size Cork allows.
+9. Resize a card to the largest size Cork allows.
+10. Click the board background, then reselect and move each card.
+11. Double-click a card to edit it.
+12. Right-click a card and verify the context menu still works.
+13. Drag a large local photo onto the board.
+14. Wait for the real photo thumbnail to appear if the placeholder is visible.
+15. Move and resize the large-photo card repeatedly.
+16. Quit Cork from the menu bar.
+17. Relaunch Cork and verify the resized cards restore correctly.
+
+Expected:
+
+- Selected cards show a clear but quiet resize handle.
+- Dragging the handle resizes the selected card without layout jumps.
+- Dragging the card body still moves the card.
+- Cards remain inside usable board bounds.
+- Text, checklist entries, and images clip cleanly inside the card.
+- Hover and selected states make the active card easy to identify.
+- Clicking the board background clears selection without making cards unclickable.
+- Editing, deleting, duplicating, and context menus still work.
+- Large image cards stay responsive while moving and resizing.
+- Resized card frames persist across relaunch.
+
+Known current limitations:
+
+- Resize is currently bottom-right only.
+- There is no snap grid or alignment guide yet.
+- File-backed image thumbnails are cached in memory and regenerate after relaunch.
+
+Failure notes:
+
+- Which card type felt slow or jumpy.
+- Whether the issue happened while moving, resizing, hovering, or editing.
+- Whether the card was near a board edge.
+- Whether a large photo was involved, including approximate file size and dimensions if known.
+- Whether the issue persisted after quitting and relaunching Cork.
 
 ## Full-Screen App Spaces
 
@@ -448,6 +499,7 @@ Real card creation:
 Board management:
 Menu bar creation:
 Drag and drop imports:
+Card resizing and layout polish:
 Full-screen Spaces:
 Multiple desktops:
 Multiple monitors:
