@@ -32,7 +32,8 @@ flowchart LR
     Commands --> Store["Board store"]
     Store --> Domain["CorkCore domain model"]
     Store --> Persistence["Persistence adapter"]
-    Drop["Drag and drop import"] --> Commands
+    Drop["Drag and drop adapter"] --> ImportResolver["Import resolver"]
+    ImportResolver --> Commands
 ```
 
 The important boundary is that `CorkCore` does not know about AppKit, SwiftUI, global hot keys, or storage frameworks. It models boards, cards, positions, and user-level operations.
@@ -118,6 +119,8 @@ Guidelines:
 
 Current files:
 
+- `Sources/CorkCore/BoardImportIntent.swift`
+- `Sources/CorkCore/BoardImportResolver.swift`
 - `Sources/CorkCore/BoardModels.swift`
 - `Sources/CorkCore/BoardStore.swift`
 
@@ -128,6 +131,8 @@ Current model:
 - `CorkBoard`
 - `BoardItem`
 - `BoardItemContent`
+- `BoardImportIntent`
+- `BoardImportResolver`
 - `TextCard`
 - `ChecklistCard`
 - `ImageCard`
@@ -164,6 +169,8 @@ Current persistence behavior:
 - Save board names and board lifecycle changes.
 - Save created and edited text, checklist, and image cards.
 - Save local image cards as file references.
+- Save dropped image cards as local file references.
+- Save dropped text, URL, and file placeholder cards as text cards.
 - Restore state automatically on launch.
 - Fall back to sample boards if no saved state exists.
 - Debounce autosaves while cards are dragged.
@@ -237,35 +244,45 @@ Examples:
 - `moveSelectedItem(by:)`
 - `duplicateItem(_:)`
 - `deleteItem(_:)`
-- `importDroppedItems(_:at:)`
+- `importItems(_:at:constrainedTo:)`
 
 The command layer currently lives in `BoardStore`. If it grows too large, the next extraction should be a small command facade around the store rather than direct view mutation.
 
 ## Drag and Drop
 
-Drag-and-drop should be implemented as an import pipeline:
+Drag-and-drop is implemented as an import pipeline:
 
 ```mermaid
 flowchart LR
-    Providers["NSItemProvider values"] --> Resolver["Drop resolver"]
-    Resolver --> Intent["Card creation intent"]
-    Intent --> Assets["Asset storage"]
+    Pasteboard["NSPasteboard values"] --> Adapter["AppKit drop adapter"]
+    Adapter --> Source["BoardImportSource"]
+    Source --> Resolver["BoardImportResolver"]
+    Resolver --> Intent["BoardImportIntent"]
     Intent --> Commands["Board command"]
     Commands --> Store["Board store"]
 ```
 
-Expected drop types:
+Current drop types:
 
-- Images from Finder, Safari, Photos, and browsers.
+- Image files from Finder.
 - File URLs from Finder.
 - Web URLs from browsers.
 - Plain text snippets.
 
-Copy-versus-reference behavior should be explicit:
+Current behavior:
 
-- Images dropped from the web should usually be copied into Cork's app support storage.
-- Local files should start as references, with copied-file support later.
-- URLs should become URL cards, eventually with rich previews.
+- Image file drops create image cards backed by file references.
+- Plain text drops create text cards.
+- Web URL drops create lightweight text placeholder cards.
+- Non-image file drops create lightweight text placeholder cards.
+- Drops land at the board-coordinate drop location and stagger when multiple files are imported.
+
+Copy-versus-reference behavior should remain explicit:
+
+- Local files currently start as references.
+- Copied-file support belongs in an asset storage adapter under Application Support.
+- Images dropped from the web should eventually be copied into Cork's app support storage.
+- URLs should become dedicated URL cards, eventually with rich previews.
 
 ## Error Handling
 

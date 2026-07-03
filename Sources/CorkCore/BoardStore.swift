@@ -273,6 +273,59 @@ public final class BoardStore: ObservableObject {
         return true
     }
 
+    @discardableResult
+    public func importItems(
+        _ intents: [BoardImportIntent],
+        at origin: BoardPoint,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) -> [BoardItem] {
+        var createdItems: [BoardItem] = []
+        var nextOrigin = origin
+
+        for intent in intents {
+            let item: BoardItem
+
+            switch intent {
+            case .imageFile(let url, let title):
+                item = createImageCard(
+                    title: title,
+                    source: .fileReference(url),
+                    at: nextOrigin,
+                    constrainedTo: canvasSize
+                )
+            case .plainText(let title, let body):
+                item = createTextCard(
+                    title: title,
+                    body: body,
+                    at: nextOrigin,
+                    constrainedTo: canvasSize
+                )
+            case .webURL(let url, let title):
+                item = createTextCard(
+                    title: title,
+                    body: url.absoluteString,
+                    at: nextOrigin,
+                    constrainedTo: canvasSize
+                )
+            case .fileReference(let url, let title):
+                item = createTextCard(
+                    title: title,
+                    body: url.path,
+                    at: nextOrigin,
+                    constrainedTo: canvasSize
+                )
+            }
+
+            createdItems.append(item)
+            nextOrigin = BoardPoint(
+                x: item.frame.origin.x + 24,
+                y: item.frame.origin.y + 24
+            )
+        }
+
+        return createdItems
+    }
+
     public func updateItemPosition(
         _ id: BoardItem.ID,
         to origin: BoardPoint,

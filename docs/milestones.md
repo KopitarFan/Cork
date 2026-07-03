@@ -179,6 +179,10 @@ Closeout verification:
 
 ## Iteration 5: Drag and Drop Imports
 
+Status: complete.
+
+Completed: 2026-07-02.
+
 Goal: the board feels like a native macOS drop target.
 
 Scope:
@@ -188,11 +192,11 @@ Scope:
 - Accept URL drops from browsers.
 - Accept plain text drops.
 - Add an import resolver that converts dropped providers into card creation intents.
-- Store copied assets in Application Support.
+- Keep copied asset storage in view as a follow-up.
 
 Implementation notes:
 
-- Start with copied images and referenced files.
+- Start with referenced local files.
 - Keep security-scoped bookmarks in mind for sandboxed builds.
 - Drops should land at the pointer location when possible.
 
@@ -200,9 +204,41 @@ Exit criteria:
 
 - Dropping an image creates an image card.
 - Dropping a file creates a file card or referenced placeholder card.
-- Dropping a URL creates a URL card.
+- Dropping a URL creates a URL card or placeholder card.
 - Dropping plain text creates a text card.
 - Failed imports do not crash or block the app.
+
+Completed:
+
+- Added a `BoardImportIntent` model for import commands.
+- Added a `BoardImportResolver` in `CorkCore` for pasteboard-independent import classification.
+- Added an AppKit `BoardDropResolver` adapter for `NSPasteboard` values.
+- Added `BoardStore.importItems(_:at:constrainedTo:)`.
+- Wired the board input layer to accept image, file, URL, and plain-text drops.
+- Dropped image files create image cards backed by file references.
+- Dropped plain text creates text cards.
+- Dropped URLs create lightweight text placeholder cards.
+- Dropped non-image files create lightweight text placeholder cards.
+- Drops land at the board-coordinate drop point and multiple file drops are staggered.
+- Added tests for import resolution, store import commands, clamping, autosave, empty imports, multiple file imports, and precedence rules.
+
+Closeout verification:
+
+- Manual drag-and-drop testing passed.
+- Finder image drops create image cards at the drop point.
+- Plain text drops create text cards.
+- Browser URL drops create text placeholder cards.
+- Non-image file drops create file placeholder cards.
+- Imported cards can be moved, persisted, and restored.
+- Step 7 automated verification passed: `swift test`, `swift build`, and `git diff --check`.
+- `swift test` passed with 80 tests and 0 failures.
+
+Deferred:
+
+- Dedicated URL cards with rich previews.
+- Dedicated file cards.
+- Copied asset storage in Application Support.
+- Security-scoped bookmarks for sandboxed referenced files.
 
 ## Iteration 6: Resizing and Layout Polish
 
