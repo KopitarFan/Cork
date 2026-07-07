@@ -57,6 +57,9 @@ struct BoardView: View {
                                 constrainedTo: boardSize(from: proxy.size)
                             )
                         },
+                        onOpenURL: { itemID in
+                            openURLCard(itemID)
+                        },
                         onDuplicate: { itemID in
                             boardStore.duplicateItem(
                                 itemID,
@@ -206,7 +209,31 @@ struct BoardView: View {
                 title: editedCard.title,
                 source: editedCard.source
             )
+
+        case .url(let card):
+            guard let editedCard = CorkDialogs.promptForURLCard(
+                title: "Edit Link",
+                card: card
+            ) else {
+                return
+            }
+
+            boardStore.updateURLCard(
+                item.id,
+                title: editedCard.title,
+                url: editedCard.url
+            )
         }
+    }
+
+    private func openURLCard(_ itemID: BoardItem.ID) {
+        guard let item = boardStore.selectedBoard.items.first(where: { $0.id == itemID }),
+              case .url(let card) = item.content
+        else {
+            return
+        }
+
+        NSWorkspace.shared.open(card.url)
     }
 
     private func createBoard() {

@@ -21,15 +21,15 @@ Opening Cork should feel like pulling back a curtain, not launching an app.
 
 ## Current Status
 
-The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, drag-and-drop imports, and resizing/layout polish:
+The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, drag-and-drop imports, resizing/layout polish, and dedicated URL cards:
 
 - Menu bar app.
 - Global keyboard shortcut: `Command` + `Option` + `B`.
 - Top-edge slide-in board panel.
 - Multiple named sample boards.
-- Text, checklist, and image cards.
+- Text, checklist, image, and URL cards.
 - Card creation from the board header and menu bar.
-- Lightweight editing for text notes, checklist items, and image card titles.
+- Lightweight editing for text notes, checklist items, image card titles, and URL cards.
 - Local image card creation through the native file picker.
 - Draggable card positions.
 - Selected-card state with keyboard movement.
@@ -38,23 +38,25 @@ The project currently has the first runnable foundation, persistence layer, card
 - Board creation, rename, deletion, and menu-bar board switching.
 - Drag-and-drop image imports from Finder.
 - Drag-and-drop plain text imports.
-- Drag-and-drop URL imports as lightweight text placeholder cards.
+- Drag-and-drop URL imports as dedicated URL cards.
 - Drag-and-drop file imports as lightweight text placeholder cards.
 - Resizable cards with a selected-card bottom-right handle.
 - Minimum and maximum card sizes.
 - Edge-aware movement and resizing bounds.
 - Hover and selected states for direct manipulation.
 - Downsampled cached thumbnails for large local image cards.
+- URL-card context menu actions, including opening links in the default browser.
 - JSON-backed persistence in Application Support.
 - Autosave for board selection, board changes, card creation, card editing, card movement, card resizing, and card actions.
 - A separate `CorkCore` target for board and card models.
-- Unit tests for board selection, card movement, card resizing, card creation, card editing, board lifecycle commands, import resolution, snapshot encoding, JSON persistence, and autosave.
+- Unit tests for board selection, card movement, card resizing, card creation, URL card creation/editing/imports, board lifecycle commands, import resolution, snapshot encoding, JSON persistence, and autosave.
 
 Not implemented yet:
 
-- Dedicated URL and file card renderers.
+- Dedicated file card renderers.
 - Copied asset storage for imported files and remote images.
 - Markdown notes and color palette cards.
+- Rich URL previews and favicons.
 - Packaged `.app` release workflow.
 
 ## Run
@@ -112,10 +114,9 @@ The codebase is intentionally split so product logic can be tested without AppKi
 
 ## Next Development Slice
 
-The next slice is Milestone 7: more card types:
+The next slice continues Milestone 7: more card types:
 
 - Add Markdown notes.
-- Add dedicated URL cards.
 - Add dedicated file cards.
 - Add color palette cards.
 - Keep rich previews optional and cached.

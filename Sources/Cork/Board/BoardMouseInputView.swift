@@ -12,6 +12,7 @@ struct BoardMouseInputView: NSViewRepresentable {
     let onEdit: (BoardItem.ID) -> Void
     let onMove: (BoardItem.ID, BoardPoint) -> Void
     let onResize: (BoardItem.ID, BoardSize) -> Void
+    let onOpenURL: (BoardItem.ID) -> Void
     let onDuplicate: (BoardItem.ID) -> Void
     let onDelete: (BoardItem.ID) -> Void
     let onImport: ([BoardImportIntent], BoardPoint) -> Void
@@ -32,6 +33,7 @@ struct BoardMouseInputView: NSViewRepresentable {
         nsView.onEdit = onEdit
         nsView.onMove = onMove
         nsView.onResize = onResize
+        nsView.onOpenURL = onOpenURL
         nsView.onDuplicate = onDuplicate
         nsView.onDelete = onDelete
         nsView.onImport = onImport
@@ -48,6 +50,7 @@ final class BoardMouseCatcherView: NSView {
     var onEdit: ((BoardItem.ID) -> Void)?
     var onMove: ((BoardItem.ID, BoardPoint) -> Void)?
     var onResize: ((BoardItem.ID, BoardSize) -> Void)?
+    var onOpenURL: ((BoardItem.ID) -> Void)?
     var onDuplicate: ((BoardItem.ID) -> Void)?
     var onDelete: ((BoardItem.ID) -> Void)?
     var onImport: (([BoardImportIntent], BoardPoint) -> Void)?
@@ -183,6 +186,18 @@ final class BoardMouseCatcherView: NSView {
         contextItemID = item.id
 
         let menu = NSMenu()
+
+        if case .url = item.content {
+            let openItem = NSMenuItem(
+                title: "Open Link",
+                action: #selector(openContextItem),
+                keyEquivalent: ""
+            )
+            openItem.target = self
+            menu.addItem(openItem)
+            menu.addItem(.separator())
+        }
+
         let editItem = NSMenuItem(
             title: "Edit",
             action: #selector(editContextItem),
@@ -237,6 +252,15 @@ final class BoardMouseCatcherView: NSView {
         }
 
         onEdit?(contextItemID)
+        self.contextItemID = nil
+    }
+
+    @objc private func openContextItem() {
+        guard let contextItemID else {
+            return
+        }
+
+        onOpenURL?(contextItemID)
         self.contextItemID = nil
     }
 

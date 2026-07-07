@@ -90,6 +90,82 @@ final class BoardStoreCreationTests: XCTestCase {
         XCTAssertEqual(card.source, source)
     }
 
+    func testCreateURLCardAddsSelectedURLItem() {
+        let board = CorkBoard(name: "Board")
+        let store = BoardStore(boards: [board])
+        let url = URL(string: "https://example.com/reference")!
+
+        let item = store.createURLCard(
+            title: "  Reference  ",
+            url: url,
+            at: BoardPoint(x: 120, y: 150)
+        )
+
+        XCTAssertEqual(store.selectedBoard.items.count, 1)
+        XCTAssertEqual(store.selectedItemID, item.id)
+        XCTAssertEqual(item.frame.origin, BoardPoint(x: 120, y: 150))
+        XCTAssertEqual(item.frame.size, BoardStore.Defaults.urlCardSize)
+
+        guard case .url(let card) = item.content else {
+            return XCTFail("Expected a URL card.")
+        }
+
+        XCTAssertEqual(card.title, "Reference")
+        XCTAssertEqual(card.url, url)
+    }
+
+    func testCreateURLCardUsesHostFallbackTitle() {
+        let board = CorkBoard(name: "Board")
+        let store = BoardStore(boards: [board])
+        let url = URL(string: "https://example.com/reference")!
+
+        let item = store.createURLCard(title: "   ", url: url)
+
+        guard case .url(let card) = item.content else {
+            return XCTFail("Expected a URL card.")
+        }
+
+        XCTAssertEqual(card.title, "example.com")
+    }
+
+    func testCreateURLCardClampsToCanvasBounds() {
+        let board = CorkBoard(name: "Board")
+        let store = BoardStore(boards: [board])
+        let url = URL(string: "https://example.com/reference")!
+
+        let item = store.createURLCard(
+            title: "Reference",
+            url: url,
+            at: BoardPoint(x: 999, y: 999),
+            constrainedTo: BoardSize(width: 320, height: 260)
+        )
+
+        XCTAssertEqual(item.frame.origin, BoardPoint(x: 28, y: 98))
+    }
+
+    func testCreateURLCardAutosavesWhenRepositoryIsConfigured() {
+        let board = CorkBoard(name: "Board")
+        let repository = CapturingCreationRepository()
+        let store = BoardStore(
+            boards: [board],
+            repository: repository,
+            autosaveDelay: 0
+        )
+        let url = URL(string: "https://example.com/reference")!
+
+        let item = store.createURLCard(title: "Reference", url: url)
+
+        XCTAssertEqual(repository.savedSnapshots.count, 1)
+        XCTAssertEqual(repository.savedSnapshots[0].selectedBoard.items.first?.id, item.id)
+
+        guard case .url(let card) = repository.savedSnapshots[0].selectedBoard.items[0].content else {
+            return XCTFail("Expected a URL card.")
+        }
+
+        XCTAssertEqual(card.title, "Reference")
+        XCTAssertEqual(card.url, url)
+    }
+
     func testUpdateTextCardChangesTextContentAndSelectsItem() {
         let item = BoardItem(
             frame: BoardRect(
@@ -185,6 +261,61 @@ final class BoardStoreCreationTests: XCTestCase {
         XCTAssertEqual(card.source, source)
     }
 
+    func testUpdateURLCardChangesURLContentAndSelectsItem() {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: BoardPoint(x: 10, y: 10),
+                size: BoardSize(width: 120, height: 120)
+            ),
+            content: .url(URLCard(
+                title: "Old",
+                url: URL(string: "https://example.com/old")!
+            ))
+        )
+        let board = CorkBoard(name: "Board", items: [item])
+        let store = BoardStore(boards: [board])
+        let url = URL(string: "https://example.com/new")!
+
+        let didUpdate = store.updateURLCard(item.id, title: "  New  ", url: url)
+
+        XCTAssertTrue(didUpdate)
+        XCTAssertEqual(store.selectedItemID, item.id)
+
+        guard case .url(let card) = store.selectedBoard.items[0].content else {
+            return XCTFail("Expected a URL card.")
+        }
+
+        XCTAssertEqual(card.title, "New")
+        XCTAssertEqual(card.url, url)
+    }
+
+    func testUpdateURLCardUsesHostFallbackTitle() {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: BoardPoint(x: 10, y: 10),
+                size: BoardSize(width: 120, height: 120)
+            ),
+            content: .url(URLCard(
+                title: "Old",
+                url: URL(string: "https://example.com/old")!
+            ))
+        )
+        let board = CorkBoard(name: "Board", items: [item])
+        let store = BoardStore(boards: [board])
+
+        store.updateURLCard(
+            item.id,
+            title: "   ",
+            url: URL(string: "https://developer.apple.com/documentation")!
+        )
+
+        guard case .url(let card) = store.selectedBoard.items[0].content else {
+            return XCTFail("Expected a URL card.")
+        }
+
+        XCTAssertEqual(card.title, "developer.apple.com")
+    }
+
     func testUpdateCardRejectsWrongContentType() {
         let item = BoardItem(
             frame: BoardRect(
@@ -259,6 +390,38 @@ final class BoardStoreCreationTests: XCTestCase {
         }
 
         XCTAssertEqual(card.title, "New")
+    }
+
+    func testUpdateURLCardAutosavesWhenRepositoryIsConfigured() {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: BoardPoint(x: 10, y: 10),
+                size: BoardSize(width: 120, height: 120)
+            ),
+            content: .url(URLCard(
+                title: "Old",
+                url: URL(string: "https://example.com/old")!
+            ))
+        )
+        let repository = CapturingCreationRepository()
+        let board = CorkBoard(name: "Board", items: [item])
+        let store = BoardStore(
+            boards: [board],
+            repository: repository,
+            autosaveDelay: 0
+        )
+        let url = URL(string: "https://example.com/new")!
+
+        store.updateURLCard(item.id, title: "New", url: url)
+
+        XCTAssertEqual(repository.savedSnapshots.count, 1)
+
+        guard case .url(let card) = repository.savedSnapshots[0].selectedBoard.items[0].content else {
+            return XCTFail("Expected a URL card.")
+        }
+
+        XCTAssertEqual(card.title, "New")
+        XCTAssertEqual(card.url, url)
     }
 
     func testCreateCardClampsToCanvasBounds() {

@@ -103,6 +103,32 @@ enum CorkDialogs {
         return ImageCard(title: titleField.stringValue, source: card.source)
     }
 
+    static func promptForURLCard(title: String, card: URLCard) -> URLCard? {
+        let titleField = NSTextField(string: card.title)
+        titleField.placeholderString = "Title"
+
+        let urlField = NSTextField(string: card.url.absoluteString)
+        urlField.placeholderString = "https://example.com"
+
+        let form = makeFormView(rows: [
+            makeLabeledRow(label: "Title", view: titleField),
+            makeLabeledRow(label: "URL", view: urlField)
+        ])
+
+        let alert = makeAlert(title: title, message: "")
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.accessoryView = form
+
+        guard alert.runModal() == .alertFirstButtonReturn,
+              let url = webURL(from: urlField.stringValue)
+        else {
+            return nil
+        }
+
+        return URLCard(title: titleField.stringValue, url: url)
+    }
+
     static func chooseImageFile() -> URL? {
         activateAppForDialog()
 
@@ -244,6 +270,20 @@ enum CorkDialogs {
 
         let title = trimmed(String(value.dropFirst(prefix.count)))
         return title.isEmpty ? nil : title
+    }
+
+    private static func webURL(from value: String) -> URL? {
+        let trimmedValue = trimmed(value)
+
+        guard let url = URL(string: trimmedValue),
+              !url.isFileURL,
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https"
+        else {
+            return nil
+        }
+
+        return url
     }
 
     private static func trimmed(_ value: String) -> String {

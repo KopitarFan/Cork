@@ -292,6 +292,8 @@ Deferred:
 
 ## Iteration 7: More Card Types
 
+Status: in progress.
+
 Goal: Cork supports the core ambient-context item types.
 
 Scope:
@@ -312,6 +314,34 @@ Exit criteria:
 
 - The board supports text, checklist, image, URL, file, markdown, and palette cards.
 - Each type can be created, moved, persisted, and deleted.
+
+Completed so far:
+
+- Added a `URLCard` domain payload.
+- Added `BoardItemContent.url`.
+- Added `BoardStore.createURLCard(...)`.
+- Added `BoardStore.updateURLCard(...)`.
+- Changed web URL imports to create dedicated URL cards instead of text placeholder cards.
+- Added a URL card renderer with visible card-type icon treatment.
+- Added native URL editing through double-click, the board header edit button, and the existing edit command path.
+- Added right-click `Open Link` for URL cards, routed through `NSWorkspace`.
+- Added tests for URL card creation, editing, import routing, clamping, autosave, and persistence.
+
+Closeout verification for URL cards:
+
+- Manual URL-card testing passed.
+- Dragged browser URLs create URL cards.
+- URL card icons, title, host, and URL text are visible.
+- URL cards can be edited, moved, resized, duplicated, deleted, opened, persisted, and restored.
+- Automated verification passed: `swift test`, `swift build`, and `git diff --check`.
+- `swift test` passed with 102 tests and 0 failures.
+
+Remaining:
+
+- Markdown notes.
+- Dedicated file cards.
+- Color palette cards.
+- Rich URL previews and favicons.
 
 ## Iteration 8: Board Management
 

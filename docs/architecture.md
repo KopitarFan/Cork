@@ -139,6 +139,7 @@ Current model:
 - `TextCard`
 - `ChecklistCard`
 - `ImageCard`
+- `URLCard`
 - `BoardRect`
 - `BoardPoint`
 - `BoardSize`
@@ -170,11 +171,12 @@ Current persistence behavior:
 - Save the selected board ID.
 - Save card frames and card content.
 - Save board names and board lifecycle changes.
-- Save created and edited text, checklist, and image cards.
+- Save created and edited text, checklist, image, and URL cards.
 - Save resized card frames.
 - Save local image cards as file references.
 - Save dropped image cards as local file references.
-- Save dropped text, URL, and file placeholder cards as text cards.
+- Save dropped text and file placeholder cards as text cards.
+- Save dropped web URLs as URL cards.
 - Restore state automatically on launch.
 - Fall back to sample boards if no saved state exists.
 - Debounce autosaves while cards are dragged.
@@ -226,7 +228,7 @@ classDiagram
     BoardItem --> BoardItemContent
 ```
 
-The current app implements text, checklist, and image cards. Image cards can use bundled SF Symbols for samples or local file references for user-created images. URL, file, and palette cards should be added through new `BoardItemContent` cases and narrow card views.
+The current app implements text, checklist, image, and URL cards. Image cards can use bundled SF Symbols for samples or local file references for user-created images. URL cards store a title and web URL, render lightweight native link cards, and open links through `NSWorkspace` in the app layer. File, markdown, and palette cards should be added through new `BoardItemContent` cases and narrow card views.
 
 ## Commands
 
@@ -241,9 +243,11 @@ Examples:
 - `createTextCard(title:body:at:)`
 - `createChecklistCard(title:entries:at:)`
 - `createImageCard(title:source:at:)`
+- `createURLCard(title:url:at:)`
 - `updateTextCard(_:title:body:)`
 - `updateChecklistCard(_:title:entries:)`
 - `updateImageCard(_:title:source:)`
+- `updateURLCard(_:title:url:)`
 - `updateItemPosition(_:to:)`
 - `resizeItem(_:to:)`
 - `resizeSelectedItem(to:)`
@@ -280,7 +284,7 @@ Current behavior:
 - Image file drops create image cards backed by file references.
 - Image file cards render downsampled cached thumbnails for interactive performance.
 - Plain text drops create text cards.
-- Web URL drops create lightweight text placeholder cards.
+- Web URL drops create URL cards.
 - Non-image file drops create lightweight text placeholder cards.
 - Drops land at the board-coordinate drop location and stagger when multiple files are imported.
 
@@ -290,7 +294,7 @@ Copy-versus-reference behavior should remain explicit:
 - The thumbnail cache is an in-memory render cache, not durable copied asset storage.
 - Copied-file support belongs in an asset storage adapter under Application Support.
 - Images dropped from the web should eventually be copied into Cork's app support storage.
-- URLs should become dedicated URL cards, eventually with rich previews.
+- URL cards are intentionally lightweight for now; rich previews and favicons should be optional and cached.
 
 ## Error Handling
 
@@ -313,6 +317,7 @@ Keep tests concentrated around behavior that should not regress:
 - Card movement and resizing bounds.
 - Card creation commands.
 - Card editing commands.
+- URL import and URL card command behavior.
 - Board creation, rename, and deletion commands.
 - Persistence round trips.
 - Import intent resolution.

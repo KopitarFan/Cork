@@ -112,6 +112,42 @@ final class PersistenceAcceptanceTests: XCTestCase {
         )
     }
 
+    func testURLCardPersistsThroughRepositoryAndFreshStore() throws {
+        let board = CorkBoard(name: "Board")
+        let repository = JSONBoardRepository(fileURL: makeTemporaryFileURL())
+        let store = BoardStore(
+            boards: [board],
+            repository: repository,
+            autosaveDelay: 0
+        )
+        let url = URL(string: "https://example.com/reference")!
+
+        let item = store.createURLCard(
+            title: "Reference",
+            url: url,
+            at: BoardPoint(x: 72, y: 96)
+        )
+
+        let loadedSnapshot = try XCTUnwrap(repository.loadSnapshot())
+        let restoredStore = BoardStore(
+            snapshot: loadedSnapshot,
+            repository: repository,
+            autosaveDelay: 0
+        )
+
+        XCTAssertEqual(restoredStore.selectedItemID, nil)
+        XCTAssertEqual(restoredStore.selectedBoard.items[0].id, item.id)
+        XCTAssertEqual(restoredStore.selectedBoard.items[0].frame.origin, BoardPoint(x: 72, y: 96))
+        XCTAssertEqual(restoredStore.selectedBoard.items[0].frame.size, BoardStore.Defaults.urlCardSize)
+
+        guard case .url(let card) = restoredStore.selectedBoard.items[0].content else {
+            return XCTFail("Expected a URL card.")
+        }
+
+        XCTAssertEqual(card.title, "Reference")
+        XCTAssertEqual(card.url, url)
+    }
+
     func testRepositoryRoundTripPreservesFullBoardLibrary() throws {
         let first = CorkBoard(
             name: "Writing",
@@ -149,6 +185,16 @@ final class PersistenceAcceptanceTests: XCTestCase {
                     content: .image(ImageCard(
                         title: "Reference",
                         source: .bundledSymbol("photo")
+                    ))
+                ),
+                BoardItem(
+                    frame: BoardRect(
+                        origin: BoardPoint(x: 650, y: 124),
+                        size: BoardSize(width: 280, height: 150)
+                    ),
+                    content: .url(URLCard(
+                        title: "Release Notes",
+                        url: URL(string: "https://example.com/release-notes")!
                     ))
                 )
             ]

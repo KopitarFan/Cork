@@ -68,7 +68,7 @@ final class BoardStoreImportTests: XCTestCase {
         XCTAssertEqual(card.body, "Keep this nearby.")
     }
 
-    func testImportWebURLCreatesTextPlaceholderCard() {
+    func testImportWebURLCreatesURLCard() {
         let board = CorkBoard(name: "Board")
         let store = BoardStore(boards: [board])
         let url = URL(string: "https://example.com/reference")!
@@ -79,13 +79,55 @@ final class BoardStoreImportTests: XCTestCase {
         )
 
         XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].frame.origin, BoardPoint(x: 72, y: 96))
+        XCTAssertEqual(items[0].frame.size, BoardStore.Defaults.urlCardSize)
 
-        guard case .text(let card) = items[0].content else {
-            return XCTFail("Expected a text card.")
+        guard case .url(let card) = items[0].content else {
+            return XCTFail("Expected a URL card.")
         }
 
         XCTAssertEqual(card.title, "example.com")
-        XCTAssertEqual(card.body, "https://example.com/reference")
+        XCTAssertEqual(card.url, url)
+    }
+
+    func testImportWebURLClampsToCanvasBounds() {
+        let board = CorkBoard(name: "Board")
+        let store = BoardStore(boards: [board])
+        let url = URL(string: "https://example.com/reference")!
+
+        let items = store.importItems(
+            [.webURL(url: url, title: "example.com")],
+            at: BoardPoint(x: 999, y: 999),
+            constrainedTo: BoardSize(width: 320, height: 260)
+        )
+
+        XCTAssertEqual(items[0].frame.origin, BoardPoint(x: 28, y: 98))
+    }
+
+    func testImportWebURLAutosavesWhenRepositoryIsConfigured() {
+        let board = CorkBoard(name: "Board")
+        let repository = CapturingImportRepository()
+        let store = BoardStore(
+            boards: [board],
+            repository: repository,
+            autosaveDelay: 0
+        )
+        let url = URL(string: "https://example.com/reference")!
+
+        let items = store.importItems(
+            [.webURL(url: url, title: "example.com")],
+            at: BoardPoint(x: 72, y: 96)
+        )
+
+        XCTAssertEqual(repository.savedSnapshots.count, 1)
+        XCTAssertEqual(repository.savedSnapshots[0].selectedBoard.items.first?.id, items[0].id)
+
+        guard case .url(let card) = repository.savedSnapshots[0].selectedBoard.items[0].content else {
+            return XCTFail("Expected a URL card.")
+        }
+
+        XCTAssertEqual(card.title, "example.com")
+        XCTAssertEqual(card.url, url)
     }
 
     func testImportFileReferenceCreatesTextPlaceholderCard() {
