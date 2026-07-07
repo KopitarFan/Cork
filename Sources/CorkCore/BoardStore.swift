@@ -8,6 +8,7 @@ public final class BoardStore: ObservableObject {
         public static let textCardSize = BoardSize(width: 260, height: 190)
         public static let checklistCardSize = BoardSize(width: 240, height: 210)
         public static let imageCardSize = BoardSize(width: 230, height: 170)
+        public static let urlCardSize = BoardSize(width: 280, height: 150)
         public static let minimumCardSize = BoardSize(width: 160, height: 120)
         public static let maximumCardSize = BoardSize(width: 640, height: 520)
     }
@@ -144,6 +145,24 @@ public final class BoardStore: ObservableObject {
     }
 
     @discardableResult
+    public func createURLCard(
+        title: String = "",
+        url: URL,
+        at origin: BoardPoint = Defaults.newCardOrigin,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) -> BoardItem {
+        createItem(
+            content: .url(URLCard(
+                title: sanitizedURLTitle(title, url: url),
+                url: url
+            )),
+            origin: origin,
+            size: Defaults.urlCardSize,
+            constrainedTo: canvasSize
+        )
+    }
+
+    @discardableResult
     public func updateTextCard(
         _ id: BoardItem.ID,
         title: String,
@@ -212,6 +231,30 @@ public final class BoardStore: ObservableObject {
             }
 
             return .image(nextCard)
+        }
+    }
+
+    @discardableResult
+    public func updateURLCard(
+        _ id: BoardItem.ID,
+        title: String,
+        url: URL
+    ) -> Bool {
+        updateItemContent(id) { content in
+            guard case .url(let currentCard) = content else {
+                return nil
+            }
+
+            let nextCard = URLCard(
+                title: sanitizedURLTitle(title, url: url),
+                url: url
+            )
+
+            guard currentCard != nextCard else {
+                return nil
+            }
+
+            return .url(nextCard)
         }
     }
 
@@ -303,9 +346,9 @@ public final class BoardStore: ObservableObject {
                     constrainedTo: canvasSize
                 )
             case .webURL(let url, let title):
-                item = createTextCard(
+                item = createURLCard(
                     title: title,
-                    body: url.absoluteString,
+                    url: url,
                     at: nextOrigin,
                     constrainedTo: canvasSize
                 )
@@ -654,5 +697,19 @@ public final class BoardStore: ObservableObject {
     private func sanitizedTitle(_ value: String, fallback: String) -> String {
         let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmedValue.isEmpty ? fallback : trimmedValue
+    }
+
+    private func sanitizedURLTitle(_ value: String, url: URL) -> String {
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !trimmedValue.isEmpty {
+            return trimmedValue
+        }
+
+        if let host = url.host(), !host.isEmpty {
+            return host
+        }
+
+        return "Link"
     }
 }

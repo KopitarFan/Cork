@@ -1,6 +1,6 @@
 # Manual Testing Guide
 
-This guide covers the awkward macOS cases that are hard to prove with unit tests: full-screen Spaces, multiple desktops, menu bar behavior, global hot keys, display geometry, user-facing card creation flows, drag-and-drop imports, and resizing/layout polish.
+This guide covers the awkward macOS cases that are hard to prove with unit tests: full-screen Spaces, multiple desktops, menu bar behavior, global hot keys, display geometry, user-facing card creation flows, drag-and-drop imports, URL cards, and resizing/layout polish.
 
 Use the relevant sections before closing each milestone and whenever Cork's windowing, hot-key, menu bar, persistence, card creation, import, or card layout behavior changes.
 
@@ -181,7 +181,7 @@ Expected:
 - Multiple file drops create multiple cards staggered from the drop point.
 - Non-image file drops create text placeholder cards containing the file path.
 - Plain text drops create text cards.
-- URL drops create text placeholder cards containing the URL.
+- URL drops create dedicated URL cards.
 - Imported cards are selected after creation.
 - Imported cards can be moved, deleted, and duplicated like manually created cards.
 - Imported card positions and content persist across relaunch.
@@ -189,10 +189,10 @@ Expected:
 
 Known current limitations:
 
-- URL drops are placeholder text cards, not dedicated URL cards.
 - Non-image file drops are placeholder text cards, not dedicated file cards.
 - Local files are referenced, not copied into Application Support.
 - If a referenced image file is moved or deleted, Cork cannot render its thumbnail.
+- URL cards are lightweight native cards; Cork does not fetch favicons or rich previews yet.
 
 Failure notes:
 
@@ -202,6 +202,48 @@ Failure notes:
 - Whether multiple dropped files preserved a sensible order.
 - Whether imported content disappeared after relaunch.
 - Whether a referenced source file moved between runs.
+
+## URL Cards
+
+Run this section for the URL-card slice of Milestone 7 and whenever URL imports, URL card editing, or link opening changes.
+
+Steps:
+
+1. Launch Cork with `swift run Cork`.
+2. Show the board.
+3. Drag `https://github.com` or `https://www.apple.com` from a browser address bar onto the board.
+4. Verify the card shows Cork's URL-card icon, title, host, and URL text.
+5. Move and resize the URL card.
+6. Double-click the URL card and edit the title.
+7. Double-click the URL card again and edit the URL.
+8. Select the URL card and use the board header pencil button to edit it.
+9. Right-click the URL card and choose `Open Link`.
+10. Duplicate and delete the URL card.
+11. Quit Cork from the menu bar.
+12. Relaunch Cork and verify the edited URL card restores correctly if it was not deleted.
+
+Expected:
+
+- Browser URL drops create URL cards, not text notes.
+- URL cards use the visible card-type icon treatment.
+- Editing accepts valid `http` and `https` URLs.
+- Canceling the edit dialog leaves the URL card unchanged.
+- `Open Link` opens the URL in the default browser.
+- URL cards can be moved, resized, duplicated, deleted, persisted, and restored like other cards.
+
+Known current limitations:
+
+- Cork does not fetch site favicons.
+- Cork does not render rich URL previews.
+- URL cards are created through drag-and-drop imports for now, not the `New Card` menu.
+
+Failure notes:
+
+- Source app and URL used.
+- Whether Cork created a URL card or a different card type.
+- Whether the icon, title, host, or URL text was missing.
+- Whether editing accepted an invalid URL or rejected a valid one.
+- Whether `Open Link` launched the expected browser.
 
 ## Card Resizing and Layout Polish
 
@@ -499,6 +541,7 @@ Real card creation:
 Board management:
 Menu bar creation:
 Drag and drop imports:
+URL cards:
 Card resizing and layout polish:
 Full-screen Spaces:
 Multiple desktops:

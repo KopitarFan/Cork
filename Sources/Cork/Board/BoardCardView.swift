@@ -83,18 +83,35 @@ struct BoardCardView: View {
             .clipped()
 
         case .image(let card):
-            VStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
                 imagePreview(for: card)
                     .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
 
-                Text(card.title)
-                    .font(.system(.caption, design: .rounded))
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                CardTitle(title: card.title, systemImage: "photo")
             }
             .padding(12)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+
+        case .url(let card):
+            VStack(alignment: .leading, spacing: 10) {
+                CardTitle(title: card.title, systemImage: "link")
+
+                Text(card.url.host() ?? card.url.absoluteString)
+                    .font(.system(.callout, design: .rounded))
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Text(card.url.absoluteString)
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .clipped()
         }
     }
@@ -132,6 +149,8 @@ struct BoardCardView: View {
             AnyShapeStyle(Color(nsColor: .selectedContentBackgroundColor).opacity(0.14))
         case .image:
             AnyShapeStyle(Color(nsColor: .underPageBackgroundColor).opacity(0.92))
+        case .url:
+            AnyShapeStyle(Color(nsColor: .controlBackgroundColor).opacity(0.94))
         }
     }
 }
@@ -169,9 +188,14 @@ private struct CardTitle: View {
     var body: some View {
         HStack(spacing: 7) {
             Image(systemName: systemImage)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 16)
+                .font(.system(size: 12, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 22, height: 22)
+                .background {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.14))
+                }
 
             Text(title)
                 .font(.system(.subheadline, design: .rounded))

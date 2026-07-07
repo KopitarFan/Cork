@@ -38,6 +38,7 @@ public enum BoardItemContent: Codable, Equatable, Sendable {
     case text(TextCard)
     case checklist(ChecklistCard)
     case image(ImageCard)
+    case url(URLCard)
 
     public var displayTitle: String {
         switch self {
@@ -46,6 +47,8 @@ public enum BoardItemContent: Codable, Equatable, Sendable {
         case .checklist(let card):
             card.title
         case .image(let card):
+            card.title
+        case .url(let card):
             card.title
         }
     }
@@ -96,6 +99,16 @@ public struct ImageCard: Codable, Equatable, Sendable {
 public enum ImageSource: Codable, Equatable, Sendable {
     case bundledSymbol(String)
     case fileReference(URL)
+}
+
+public struct URLCard: Codable, Equatable, Sendable {
+    public var title: String
+    public var url: URL
+
+    public init(title: String, url: URL) {
+        self.title = title
+        self.url = url
+    }
 }
 
 public struct BoardRect: Codable, Equatable, Sendable {
