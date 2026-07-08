@@ -203,8 +203,8 @@ Implementation notes:
 Exit criteria:
 
 - Dropping an image creates an image card.
-- Dropping a file creates a file card or referenced placeholder card.
-- Dropping a URL creates a URL card or placeholder card.
+- Dropping a file creates a file card.
+- Dropping a URL creates a URL card.
 - Dropping plain text creates a text card.
 - Failed imports do not crash or block the app.
 
@@ -217,8 +217,8 @@ Completed:
 - Wired the board input layer to accept image, file, URL, and plain-text drops.
 - Dropped image files create image cards backed by file references.
 - Dropped plain text creates text cards.
-- Dropped URLs create lightweight text placeholder cards.
-- Dropped non-image files create lightweight text placeholder cards.
+- Dropped URLs create dedicated URL cards.
+- Dropped non-image files create dedicated file cards.
 - Drops land at the board-coordinate drop point and multiple file drops are staggered.
 - Added tests for import resolution, store import commands, clamping, autosave, empty imports, multiple file imports, and precedence rules.
 
@@ -227,16 +227,15 @@ Closeout verification:
 - Manual drag-and-drop testing passed.
 - Finder image drops create image cards at the drop point.
 - Plain text drops create text cards.
-- Browser URL drops create text placeholder cards.
-- Non-image file drops create file placeholder cards.
+- Browser URL drops create dedicated URL cards.
+- Non-image file drops create dedicated file cards.
 - Imported cards can be moved, persisted, and restored.
 - Step 7 automated verification passed: `swift test`, `swift build`, and `git diff --check`.
 - `swift test` passed with 80 tests and 0 failures.
 
 Deferred:
 
-- Dedicated URL cards with rich previews.
-- Dedicated file cards.
+- Rich URL previews and favicons.
 - Copied asset storage in Application Support.
 - Security-scoped bookmarks for sandboxed referenced files.
 
@@ -292,7 +291,9 @@ Deferred:
 
 ## Iteration 7: More Card Types
 
-Status: in progress.
+Status: complete.
+
+Completed: 2026-07-08.
 
 Goal: Cork supports the core ambient-context item types.
 
@@ -315,7 +316,7 @@ Exit criteria:
 - The board supports text, checklist, image, URL, file, markdown, and palette cards.
 - Each type can be created, moved, persisted, and deleted.
 
-Completed so far:
+Completed:
 
 - Added a `URLCard` domain payload.
 - Added `BoardItemContent.url`.
@@ -325,23 +326,46 @@ Completed so far:
 - Added a URL card renderer with visible card-type icon treatment.
 - Added native URL editing through double-click, the board header edit button, and the existing edit command path.
 - Added right-click `Open Link` for URL cards, routed through `NSWorkspace`.
-- Added tests for URL card creation, editing, import routing, clamping, autosave, and persistence.
+- Added `TextCardFormat` so text cards can render as plain text or Markdown.
+- Added Markdown note creation and editing through the existing text-card dialog.
+- Added Markdown rendering for headings, line breaks, lists, and inline emphasis.
+- Added a `FileCard` domain payload.
+- Added `BoardItemContent.file`.
+- Added `BoardStore.createFileCard(...)`.
+- Changed non-image file imports to create dedicated file cards instead of text placeholder cards.
+- Added a file card renderer with native document icon treatment, path display, and missing-file state.
+- Added right-click `Open File` and `Reveal in Finder` for file cards, routed through `NSWorkspace`.
+- Added a `ColorPaletteCard` domain payload.
+- Added `BoardItemContent.palette`.
+- Added `BoardStore.createColorPaletteCard(...)`.
+- Added `BoardStore.updateColorPaletteCard(...)`.
+- Added color palette creation from the board header and menu bar.
+- Added palette parsing for comma-, semicolon-, space-, and newline-separated hex values.
+- Added a palette card renderer with normalized hex labels, swatches, and overflow count.
+- Added tests for URL, Markdown, file, and palette card creation, editing, import routing, clamping, autosave, snapshot encoding, and persistence.
 
-Closeout verification for URL cards:
+Closeout verification:
 
 - Manual URL-card testing passed.
+- Manual Markdown note testing passed.
+- Manual file-card testing passed.
+- Manual color-palette testing passed.
 - Dragged browser URLs create URL cards.
 - URL card icons, title, host, and URL text are visible.
+- Markdown notes can be created, edited, moved, resized, duplicated, deleted, persisted, and restored.
+- Dragged non-image files create file cards.
+- File cards can be moved, resized, duplicated, deleted, opened, revealed in Finder, persisted, and restored.
+- Palette cards can be created, edited, moved, resized, duplicated, deleted, persisted, and restored.
 - URL cards can be edited, moved, resized, duplicated, deleted, opened, persisted, and restored.
 - Automated verification passed: `swift test`, `swift build`, and `git diff --check`.
-- `swift test` passed with 102 tests and 0 failures.
+- `swift test` passed with 121 tests and 0 failures.
 
-Remaining:
+Deferred:
 
-- Markdown notes.
-- Dedicated file cards.
-- Color palette cards.
 - Rich URL previews and favicons.
+- Copied asset storage in Application Support.
+- Security-scoped bookmarks for sandboxed referenced files.
+- A distinct simple-snippet card type. Plain text notes cover the current need.
 
 ## Iteration 8: Board Management
 

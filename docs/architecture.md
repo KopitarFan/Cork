@@ -171,12 +171,13 @@ Current persistence behavior:
 - Save the selected board ID.
 - Save card frames and card content.
 - Save board names and board lifecycle changes.
-- Save created and edited text, checklist, image, and URL cards.
+- Save created and edited text, Markdown, checklist, image, URL, file, and palette cards.
 - Save resized card frames.
 - Save local image cards as file references.
 - Save dropped image cards as local file references.
-- Save dropped text and file placeholder cards as text cards.
+- Save dropped text cards as text cards.
 - Save dropped web URLs as URL cards.
+- Save dropped non-image files as file cards.
 - Restore state automatically on launch.
 - Fall back to sample boards if no saved state exists.
 - Debounce autosaves while cards are dragged.
@@ -228,7 +229,7 @@ classDiagram
     BoardItem --> BoardItemContent
 ```
 
-The current app implements text, checklist, image, and URL cards. Image cards can use bundled SF Symbols for samples or local file references for user-created images. URL cards store a title and web URL, render lightweight native link cards, and open links through `NSWorkspace` in the app layer. File, markdown, and palette cards should be added through new `BoardItemContent` cases and narrow card views.
+The current app implements text, checklist, image, URL, file, and palette cards. Text cards can render either plain text or Markdown through `TextCardFormat`, so Markdown notes share the same domain payload and editing path as ordinary notes. Image cards can use bundled SF Symbols for samples or local file references for user-created images. URL cards store a title and web URL, render lightweight native link cards, and open links through `NSWorkspace` in the app layer. File cards store a title and referenced local URL, render native document-style cards, and use `NSWorkspace` for open and reveal actions. Palette cards store normalized hex colors and render compact swatches for glanceable design context.
 
 ## Commands
 
@@ -240,14 +241,17 @@ Examples:
 - `createBoard(name:)`
 - `renameBoard(id:name:)`
 - `deleteBoard(id:)`
-- `createTextCard(title:body:at:)`
+- `createTextCard(title:body:format:at:)`
 - `createChecklistCard(title:entries:at:)`
 - `createImageCard(title:source:at:)`
 - `createURLCard(title:url:at:)`
-- `updateTextCard(_:title:body:)`
+- `createFileCard(title:url:at:)`
+- `createColorPaletteCard(title:colors:at:)`
+- `updateTextCard(_:title:body:format:)`
 - `updateChecklistCard(_:title:entries:)`
 - `updateImageCard(_:title:source:)`
 - `updateURLCard(_:title:url:)`
+- `updateColorPaletteCard(_:title:colors:)`
 - `updateItemPosition(_:to:)`
 - `resizeItem(_:to:)`
 - `resizeSelectedItem(to:)`
@@ -285,13 +289,14 @@ Current behavior:
 - Image file cards render downsampled cached thumbnails for interactive performance.
 - Plain text drops create text cards.
 - Web URL drops create URL cards.
-- Non-image file drops create lightweight text placeholder cards.
+- Non-image file drops create dedicated file cards.
 - Drops land at the board-coordinate drop location and stagger when multiple files are imported.
 
 Copy-versus-reference behavior should remain explicit:
 
 - Local files currently start as references.
 - The thumbnail cache is an in-memory render cache, not durable copied asset storage.
+- File cards currently reference the original local file path.
 - Copied-file support belongs in an asset storage adapter under Application Support.
 - Images dropped from the web should eventually be copied into Cork's app support storage.
 - URL cards are intentionally lightweight for now; rich previews and favicons should be optional and cached.

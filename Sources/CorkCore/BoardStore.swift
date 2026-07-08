@@ -9,6 +9,8 @@ public final class BoardStore: ObservableObject {
         public static let checklistCardSize = BoardSize(width: 240, height: 210)
         public static let imageCardSize = BoardSize(width: 230, height: 170)
         public static let urlCardSize = BoardSize(width: 280, height: 150)
+        public static let fileCardSize = BoardSize(width: 280, height: 150)
+        public static let paletteCardSize = BoardSize(width: 260, height: 176)
         public static let minimumCardSize = BoardSize(width: 160, height: 120)
         public static let maximumCardSize = BoardSize(width: 640, height: 520)
     }
@@ -94,13 +96,15 @@ public final class BoardStore: ObservableObject {
     public func createTextCard(
         title: String = "Untitled Note",
         body: String = "",
+        format: TextCardFormat = .plainText,
         at origin: BoardPoint = Defaults.newCardOrigin,
         constrainedTo canvasSize: BoardSize? = nil
     ) -> BoardItem {
         createItem(
             content: .text(TextCard(
                 title: sanitizedTitle(title, fallback: "Untitled Note"),
-                body: body
+                body: body,
+                format: format
             )),
             origin: origin,
             size: Defaults.textCardSize,
@@ -163,10 +167,47 @@ public final class BoardStore: ObservableObject {
     }
 
     @discardableResult
+    public func createFileCard(
+        title: String = "",
+        url: URL,
+        at origin: BoardPoint = Defaults.newCardOrigin,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) -> BoardItem {
+        createItem(
+            content: .file(FileCard(
+                title: sanitizedFileTitle(title, url: url),
+                url: url
+            )),
+            origin: origin,
+            size: Defaults.fileCardSize,
+            constrainedTo: canvasSize
+        )
+    }
+
+    @discardableResult
+    public func createColorPaletteCard(
+        title: String = "Untitled Palette",
+        colors: [PaletteColor] = [],
+        at origin: BoardPoint = Defaults.newCardOrigin,
+        constrainedTo canvasSize: BoardSize? = nil
+    ) -> BoardItem {
+        createItem(
+            content: .palette(ColorPaletteCard(
+                title: sanitizedTitle(title, fallback: "Untitled Palette"),
+                colors: sanitizedPaletteColors(colors)
+            )),
+            origin: origin,
+            size: Defaults.paletteCardSize,
+            constrainedTo: canvasSize
+        )
+    }
+
+    @discardableResult
     public func updateTextCard(
         _ id: BoardItem.ID,
         title: String,
-        body: String
+        body: String,
+        format: TextCardFormat? = nil
     ) -> Bool {
         updateItemContent(id) { content in
             guard case .text(let currentCard) = content else {
@@ -175,7 +216,8 @@ public final class BoardStore: ObservableObject {
 
             let nextCard = TextCard(
                 title: sanitizedTitle(title, fallback: "Untitled Note"),
-                body: body
+                body: body,
+                format: format ?? currentCard.format
             )
 
             guard currentCard != nextCard else {
@@ -255,6 +297,30 @@ public final class BoardStore: ObservableObject {
             }
 
             return .url(nextCard)
+        }
+    }
+
+    @discardableResult
+    public func updateColorPaletteCard(
+        _ id: BoardItem.ID,
+        title: String,
+        colors: [PaletteColor]
+    ) -> Bool {
+        updateItemContent(id) { content in
+            guard case .palette(let currentCard) = content else {
+                return nil
+            }
+
+            let nextCard = ColorPaletteCard(
+                title: sanitizedTitle(title, fallback: "Untitled Palette"),
+                colors: sanitizedPaletteColors(colors)
+            )
+
+            guard currentCard != nextCard else {
+                return nil
+            }
+
+            return .palette(nextCard)
         }
     }
 
@@ -353,9 +419,9 @@ public final class BoardStore: ObservableObject {
                     constrainedTo: canvasSize
                 )
             case .fileReference(let url, let title):
-                item = createTextCard(
+                item = createFileCard(
                     title: title,
-                    body: url.path,
+                    url: url,
                     at: nextOrigin,
                     constrainedTo: canvasSize
                 )
@@ -712,4 +778,23 @@ public final class BoardStore: ObservableObject {
 
         return "Link"
     }
+
+    private func sanitizedFileTitle(_ value: String, url: URL) -> String {
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !trimmedValue.isEmpty {
+            return trimmedValue
+        }
+
+        let filename = url.deletingPathExtension().lastPathComponent
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return filename.isEmpty ? "File" : filename
+    }
+
+    private func sanitizedPaletteColors(_ colors: [PaletteColor]) -> [PaletteColor] {
+        colors.isEmpty ? Self.defaultPaletteColors : colors
+    }
+
+    private static let defaultPaletteColors = ColorPaletteCard.defaultColors
 }

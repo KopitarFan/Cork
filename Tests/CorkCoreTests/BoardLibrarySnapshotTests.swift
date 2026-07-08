@@ -63,6 +63,32 @@ final class BoardLibrarySnapshotTests: XCTestCase {
         XCTAssertEqual(decodedSnapshot, snapshot)
     }
 
+    func testTextCardDefaultsToPlainTextWhenDecodedWithoutFormat() throws {
+        let json = """
+        {
+            "title": "Old Note",
+            "body": "Saved before formats existed."
+        }
+        """
+
+        let card = try JSONDecoder().decode(TextCard.self, from: Data(json.utf8))
+
+        XCTAssertEqual(card.title, "Old Note")
+        XCTAssertEqual(card.body, "Saved before formats existed.")
+        XCTAssertEqual(card.format, .plainText)
+    }
+
+    func testPaletteColorParsesAndNormalizesHexValues() {
+        let colors = PaletteColor.colors(from: "#f66, 4ecdc4\nFFE66D invalid #292F36")
+
+        XCTAssertEqual(colors.map(\.hex), [
+            "#FF6666",
+            "#4ECDC4",
+            "#FFE66D",
+            "#292F36"
+        ])
+    }
+
     func testDecodingEmptyBoardListFails() throws {
         let json = """
         {

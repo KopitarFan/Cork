@@ -43,9 +43,13 @@ enum CorkDialogs {
 
         let bodyView = makeTextView(text: card.body)
         let bodyScrollView = makeScrollView(containing: bodyView, height: 164)
+        let markdownCheckbox = NSButton(checkboxWithTitle: "Markdown", target: nil, action: nil)
+        markdownCheckbox.state = card.format == .markdown ? .on : .off
+
         let form = makeFormView(rows: [
             makeLabeledRow(label: "Title", view: titleField),
-            makeLabeledRow(label: "Body", view: bodyScrollView)
+            makeLabeledRow(label: "Body", view: bodyScrollView),
+            makeLabeledRow(label: "Format", view: markdownCheckbox)
         ])
 
         let alert = makeAlert(title: title, message: "")
@@ -57,7 +61,8 @@ enum CorkDialogs {
             return nil
         }
 
-        return TextCard(title: titleField.stringValue, body: bodyView.string)
+        let format: TextCardFormat = markdownCheckbox.state == .on ? .markdown : .plainText
+        return TextCard(title: titleField.stringValue, body: bodyView.string, format: format)
     }
 
     static func promptForChecklistCard(title: String, card: ChecklistCard) -> ChecklistCard? {
@@ -127,6 +132,30 @@ enum CorkDialogs {
         }
 
         return URLCard(title: titleField.stringValue, url: url)
+    }
+
+    static func promptForColorPaletteCard(title: String, card: ColorPaletteCard) -> ColorPaletteCard? {
+        let titleField = NSTextField(string: card.title)
+        titleField.placeholderString = "Title"
+
+        let colorsView = makeTextView(text: paletteText(from: card.colors))
+        let colorsScrollView = makeScrollView(containing: colorsView, height: 118)
+        let form = makeFormView(rows: [
+            makeLabeledRow(label: "Title", view: titleField),
+            makeLabeledRow(label: "Colors", view: colorsScrollView)
+        ])
+
+        let alert = makeAlert(title: title, message: "Enter hex colors separated by commas, spaces, or new lines.")
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.accessoryView = form
+
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            return nil
+        }
+
+        let colors = PaletteColor.colors(from: colorsView.string)
+        return ColorPaletteCard(title: titleField.stringValue, colors: colors)
     }
 
     static func chooseImageFile() -> URL? {
@@ -233,6 +262,10 @@ enum CorkDialogs {
             entry.isComplete ? "[x] \(entry.title)" : entry.title
         }
         .joined(separator: "\n")
+    }
+
+    private static func paletteText(from colors: [PaletteColor]) -> String {
+        colors.map(\.hex).joined(separator: "\n")
     }
 
     private static func checklistEntries(from text: String) -> [ChecklistEntry] {

@@ -39,6 +39,8 @@ public enum BoardItemContent: Codable, Equatable, Sendable {
     case checklist(ChecklistCard)
     case image(ImageCard)
     case url(URLCard)
+    case file(FileCard)
+    case palette(ColorPaletteCard)
 
     public var displayTitle: String {
         switch self {
@@ -50,17 +52,54 @@ public enum BoardItemContent: Codable, Equatable, Sendable {
             card.title
         case .url(let card):
             card.title
+        case .file(let card):
+            card.title
+        case .palette(let card):
+            card.title
         }
     }
+}
+
+public enum TextCardFormat: String, Codable, Equatable, Sendable {
+    case plainText
+    case markdown
 }
 
 public struct TextCard: Codable, Equatable, Sendable {
     public var title: String
     public var body: String
+    public var format: TextCardFormat
 
-    public init(title: String, body: String) {
+    public init(
+        title: String,
+        body: String,
+        format: TextCardFormat = .plainText
+    ) {
         self.title = title
         self.body = body
+        self.format = format
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        title = try container.decode(String.self, forKey: .title)
+        body = try container.decode(String.self, forKey: .body)
+        format = try container.decodeIfPresent(TextCardFormat.self, forKey: .format) ?? .plainText
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(title, forKey: .title)
+        try container.encode(body, forKey: .body)
+        try container.encode(format, forKey: .format)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case title
+        case body
+        case format
     }
 }
 
@@ -108,6 +147,84 @@ public struct URLCard: Codable, Equatable, Sendable {
     public init(title: String, url: URL) {
         self.title = title
         self.url = url
+    }
+}
+
+public struct FileCard: Codable, Equatable, Sendable {
+    public var title: String
+    public var url: URL
+
+    public init(title: String, url: URL) {
+        self.title = title
+        self.url = url
+    }
+}
+
+public struct ColorPaletteCard: Codable, Equatable, Sendable {
+    public static let defaultColors = [
+        PaletteColor(hex: "#FF6B6B"),
+        PaletteColor(hex: "#4ECDC4"),
+        PaletteColor(hex: "#FFE66D"),
+        PaletteColor(hex: "#292F36")
+    ]
+
+    public var title: String
+    public var colors: [PaletteColor]
+
+    public init(title: String, colors: [PaletteColor]) {
+        self.title = title
+        self.colors = colors
+    }
+}
+
+public struct PaletteColor: Codable, Equatable, Hashable, Identifiable, Sendable {
+    public var hex: String
+    public var id: String { hex }
+
+    public init(hex: String) {
+        self.hex = Self.normalizedHex(hex) ?? "#000000"
+    }
+
+    public init?(validating hex: String) {
+        guard let normalizedHex = Self.normalizedHex(hex) else {
+            return nil
+        }
+
+        self.hex = normalizedHex
+    }
+
+    public static func colors(from text: String) -> [PaletteColor] {
+        text.split { character in
+            character == "," ||
+                character == ";" ||
+                character == "\n" ||
+                character == "\t" ||
+                character == " "
+        }
+        .compactMap { PaletteColor(validating: String($0)) }
+    }
+
+    private static func normalizedHex(_ value: String) -> String? {
+        let trimmedValue = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        let expandedValue: String
+
+        switch trimmedValue.count {
+        case 3:
+            expandedValue = trimmedValue.map { "\($0)\($0)" }.joined()
+        case 6:
+            expandedValue = trimmedValue
+        default:
+            return nil
+        }
+
+        let hexCharacters = CharacterSet(charactersIn: "0123456789ABCDEFabcdef")
+        guard expandedValue.unicodeScalars.allSatisfy({ hexCharacters.contains($0) }) else {
+            return nil
+        }
+
+        return "#\(expandedValue.uppercased())"
     }
 }
 

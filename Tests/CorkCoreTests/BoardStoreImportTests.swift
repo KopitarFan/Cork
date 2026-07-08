@@ -66,6 +66,7 @@ final class BoardStoreImportTests: XCTestCase {
 
         XCTAssertEqual(card.title, "Snippet")
         XCTAssertEqual(card.body, "Keep this nearby.")
+        XCTAssertEqual(card.format, .plainText)
     }
 
     func testImportWebURLCreatesURLCard() {
@@ -130,7 +131,7 @@ final class BoardStoreImportTests: XCTestCase {
         XCTAssertEqual(card.url, url)
     }
 
-    func testImportFileReferenceCreatesTextPlaceholderCard() {
+    func testImportFileReferenceCreatesFileCard() {
         let board = CorkBoard(name: "Board")
         let store = BoardStore(boards: [board])
         let url = URL(fileURLWithPath: "/tmp/reference.pdf")
@@ -141,13 +142,15 @@ final class BoardStoreImportTests: XCTestCase {
         )
 
         XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].frame.origin, BoardPoint(x: 72, y: 96))
+        XCTAssertEqual(items[0].frame.size, BoardStore.Defaults.fileCardSize)
 
-        guard case .text(let card) = items[0].content else {
-            return XCTFail("Expected a text card.")
+        guard case .file(let card) = items[0].content else {
+            return XCTFail("Expected a file card.")
         }
 
         XCTAssertEqual(card.title, "reference")
-        XCTAssertEqual(card.body, "/tmp/reference.pdf")
+        XCTAssertEqual(card.url, url)
     }
 
     func testImportImageFileClampsToCanvasBounds() {
@@ -190,6 +193,32 @@ final class BoardStoreImportTests: XCTestCase {
 
         XCTAssertEqual(repository.savedSnapshots.count, 1)
         XCTAssertEqual(repository.savedSnapshots[0].selectedBoard.items.first?.id, items[0].id)
+    }
+
+    func testImportFileReferenceAutosavesWhenRepositoryIsConfigured() {
+        let board = CorkBoard(name: "Board")
+        let repository = CapturingImportRepository()
+        let store = BoardStore(
+            boards: [board],
+            repository: repository,
+            autosaveDelay: 0
+        )
+        let url = URL(fileURLWithPath: "/tmp/reference.pdf")
+
+        let items = store.importItems(
+            [.fileReference(url: url, title: "reference")],
+            at: BoardPoint(x: 72, y: 96)
+        )
+
+        XCTAssertEqual(repository.savedSnapshots.count, 1)
+        XCTAssertEqual(repository.savedSnapshots[0].selectedBoard.items.first?.id, items[0].id)
+
+        guard case .file(let card) = repository.savedSnapshots[0].selectedBoard.items[0].content else {
+            return XCTFail("Expected a file card.")
+        }
+
+        XCTAssertEqual(card.title, "reference")
+        XCTAssertEqual(card.url, url)
     }
 }
 

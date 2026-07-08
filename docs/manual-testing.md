@@ -179,7 +179,7 @@ Expected:
 - Image file drops create image cards.
 - Image cards appear near the drop point and show thumbnails while the source file is available.
 - Multiple file drops create multiple cards staggered from the drop point.
-- Non-image file drops create text placeholder cards containing the file path.
+- Non-image file drops create dedicated file cards containing the file name and path.
 - Plain text drops create text cards.
 - URL drops create dedicated URL cards.
 - Imported cards are selected after creation.
@@ -189,9 +189,9 @@ Expected:
 
 Known current limitations:
 
-- Non-image file drops are placeholder text cards, not dedicated file cards.
 - Local files are referenced, not copied into Application Support.
 - If a referenced image file is moved or deleted, Cork cannot render its thumbnail.
+- If a referenced file is moved or deleted, Cork shows the file card as missing.
 - URL cards are lightweight native cards; Cork does not fetch favicons or rich previews yet.
 
 Failure notes:
@@ -244,6 +244,148 @@ Failure notes:
 - Whether the icon, title, host, or URL text was missing.
 - Whether editing accepted an invalid URL or rejected a valid one.
 - Whether `Open Link` launched the expected browser.
+
+## Markdown Text Cards
+
+Run this section for the Markdown-note slice of Milestone 7 and whenever text-card editing or rendering changes.
+
+Steps:
+
+1. Launch Cork with `swift run Cork`.
+2. Show the board.
+3. Create a text note from the board header plus button.
+4. Enable the `Markdown` checkbox.
+5. Enter this body:
+
+   ```markdown
+   # Heading
+
+   First line
+   Second line with **bold** text
+
+   - One
+   - Two
+   ```
+
+6. Save the note.
+7. Verify the card renders the heading, blank line spacing, line breaks, bold text, and list items.
+8. Move and resize the Markdown card.
+9. Double-click the card and disable the `Markdown` checkbox.
+10. Verify the card shows the same body as plain text.
+11. Re-enable Markdown, save, duplicate the card, then delete the duplicate.
+12. Quit Cork from the menu bar.
+13. Relaunch Cork and verify the Markdown card restores with its format intact.
+
+Expected:
+
+- Markdown is an option on text notes, not a separate menu item.
+- Existing plain text notes remain plain text unless Markdown is enabled.
+- Markdown headings, line breaks, blank lines, lists, and inline bold render visibly.
+- Canceling the edit dialog leaves the text card unchanged.
+- Markdown cards can be moved, resized, duplicated, deleted, persisted, and restored like other cards.
+
+Known current limitations:
+
+- Markdown support is intentionally lightweight.
+- Cork does not provide a live Markdown editor or formatting toolbar.
+
+Failure notes:
+
+- Markdown body used.
+- Whether the issue happened in create, edit, render, duplicate, or restore.
+- Whether disabling and re-enabling Markdown preserved the source text.
+
+## File Cards
+
+Run this section for the file-card slice of Milestone 7 and whenever file imports or file actions change.
+
+Steps:
+
+1. Launch Cork with `swift run Cork`.
+2. Show the board.
+3. Drag a non-image file from Finder onto the board, such as a `.pdf`, `.txt`, `.md`, or `.zip`.
+4. Verify the card shows Cork's file-card icon treatment, title, and local path.
+5. Move and resize the file card.
+6. Right-click the file card and choose `Open File`.
+7. Right-click the file card and choose `Reveal in Finder`.
+8. Double-click the file card.
+9. Select the file card and inspect the board header pencil button.
+10. Duplicate and delete the file card.
+11. Drag another non-image file onto the board.
+12. Quit Cork from the menu bar.
+13. Relaunch Cork and verify the file card restores correctly.
+14. Move or delete the source file in Finder.
+15. Relaunch Cork and verify the card shows a missing-file state.
+
+Expected:
+
+- Non-image file drops create file cards, not text notes.
+- `Open File` opens the referenced file with the default app.
+- `Reveal in Finder` selects the referenced file in Finder.
+- Double-clicking a file card opens the referenced file.
+- The board header edit button is disabled for file cards.
+- Missing source files are shown clearly without crashing Cork.
+- File cards can be moved, resized, duplicated, deleted, persisted, and restored like other cards.
+
+Known current limitations:
+
+- File cards reference local paths; Cork does not copy files into Application Support yet.
+- Sandboxed builds will need security-scoped bookmarks before external file references are production-ready.
+- File cards do not have an edit dialog yet.
+
+Failure notes:
+
+- File type and source path.
+- Whether Cork created a file card or a different card type.
+- Whether open, reveal, missing-file display, or restore failed.
+- Whether the file was moved or deleted between launches.
+
+## Color Palette Cards
+
+Run this section for the palette-card slice of Milestone 7 and whenever palette parsing, rendering, or editing changes.
+
+Steps:
+
+1. Launch Cork with `swift run Cork`.
+2. Show the board.
+3. Create a color palette from the board header plus button.
+4. Use a title such as `Launch Colors`.
+5. Enter these colors:
+
+   ```text
+   #FF6B6B
+   4ECDC4
+   #FFE66D, #292F36
+   #f66
+   ```
+
+6. Save the palette.
+7. Verify the card shows swatches and normalized hex labels.
+8. Move and resize the palette card.
+9. Double-click the card and edit the title and colors.
+10. Create another palette from the menu bar while the board is hidden.
+11. Duplicate and delete a palette card.
+12. Quit Cork from the menu bar.
+13. Relaunch Cork and verify remaining palette cards restore correctly.
+
+Expected:
+
+- Palette cards are available from the board header and menu bar `New Card` menus.
+- Comma-, semicolon-, space-, and newline-separated hex colors are accepted.
+- Three-character shorthand hex colors normalize to six-character labels.
+- Empty or invalid color input falls back safely instead of crashing.
+- Palette cards can be edited, moved, resized, duplicated, deleted, persisted, and restored like other cards.
+
+Known current limitations:
+
+- Palette cards do not copy hex values to the clipboard yet.
+- Palette cards do not import from design tools yet.
+
+Failure notes:
+
+- Color input used.
+- Whether parsing, normalization, swatch rendering, edit, duplicate, or restore failed.
+- Whether menu bar creation showed the board after a successful palette was created.
 
 ## Card Resizing and Layout Polish
 

@@ -21,15 +21,16 @@ Opening Cork should feel like pulling back a curtain, not launching an app.
 
 ## Current Status
 
-The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, drag-and-drop imports, resizing/layout polish, and dedicated URL cards:
+The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, drag-and-drop imports, resizing/layout polish, and the core Milestone 7 card types:
 
 - Menu bar app.
 - Global keyboard shortcut: `Command` + `Option` + `B`.
 - Top-edge slide-in board panel.
 - Multiple named sample boards.
-- Text, checklist, image, and URL cards.
+- Text, checklist, image, URL, file, and color palette cards.
+- Plain-text and Markdown text note formats.
 - Card creation from the board header and menu bar.
-- Lightweight editing for text notes, checklist items, image card titles, and URL cards.
+- Lightweight editing for text notes, Markdown notes, checklist items, image card titles, URL cards, and color palettes.
 - Local image card creation through the native file picker.
 - Draggable card positions.
 - Selected-card state with keyboard movement.
@@ -39,23 +40,22 @@ The project currently has the first runnable foundation, persistence layer, card
 - Drag-and-drop image imports from Finder.
 - Drag-and-drop plain text imports.
 - Drag-and-drop URL imports as dedicated URL cards.
-- Drag-and-drop file imports as lightweight text placeholder cards.
+- Drag-and-drop file imports as dedicated file cards.
 - Resizable cards with a selected-card bottom-right handle.
 - Minimum and maximum card sizes.
 - Edge-aware movement and resizing bounds.
 - Hover and selected states for direct manipulation.
 - Downsampled cached thumbnails for large local image cards.
 - URL-card context menu actions, including opening links in the default browser.
+- File-card context menu actions, including opening files and revealing them in Finder.
 - JSON-backed persistence in Application Support.
 - Autosave for board selection, board changes, card creation, card editing, card movement, card resizing, and card actions.
 - A separate `CorkCore` target for board and card models.
-- Unit tests for board selection, card movement, card resizing, card creation, URL card creation/editing/imports, board lifecycle commands, import resolution, snapshot encoding, JSON persistence, and autosave.
+- Unit tests for board selection, card movement, card resizing, card creation, URL/file/palette card creation/editing/imports, Markdown text cards, board lifecycle commands, import resolution, snapshot encoding, JSON persistence, and autosave.
 
 Not implemented yet:
 
-- Dedicated file card renderers.
 - Copied asset storage for imported files and remote images.
-- Markdown notes and color palette cards.
 - Rich URL previews and favicons.
 - Packaged `.app` release workflow.
 
@@ -114,11 +114,11 @@ The codebase is intentionally split so product logic can be tested without AppKi
 
 ## Next Development Slice
 
-The next slice continues Milestone 7: more card types:
+The next slice is Milestone 8: board management polish.
 
-- Add Markdown notes.
-- Add dedicated file cards.
-- Add color palette cards.
-- Keep rich previews optional and cached.
+- Make switching between several boards faster.
+- Add pinned or favorite boards.
+- Add board ordering or duplicate board if the menu starts to feel crowded.
+- Keep rich URL previews, favicons, copied asset storage, and sandbox bookmarks as later follow-ups.
 
 See [docs/milestones.md](docs/milestones.md) for the broader build path.

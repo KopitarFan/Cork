@@ -13,6 +13,8 @@ struct BoardMouseInputView: NSViewRepresentable {
     let onMove: (BoardItem.ID, BoardPoint) -> Void
     let onResize: (BoardItem.ID, BoardSize) -> Void
     let onOpenURL: (BoardItem.ID) -> Void
+    let onOpenFile: (BoardItem.ID) -> Void
+    let onRevealFile: (BoardItem.ID) -> Void
     let onDuplicate: (BoardItem.ID) -> Void
     let onDelete: (BoardItem.ID) -> Void
     let onImport: ([BoardImportIntent], BoardPoint) -> Void
@@ -34,6 +36,8 @@ struct BoardMouseInputView: NSViewRepresentable {
         nsView.onMove = onMove
         nsView.onResize = onResize
         nsView.onOpenURL = onOpenURL
+        nsView.onOpenFile = onOpenFile
+        nsView.onRevealFile = onRevealFile
         nsView.onDuplicate = onDuplicate
         nsView.onDelete = onDelete
         nsView.onImport = onImport
@@ -51,6 +55,8 @@ final class BoardMouseCatcherView: NSView {
     var onMove: ((BoardItem.ID, BoardPoint) -> Void)?
     var onResize: ((BoardItem.ID, BoardSize) -> Void)?
     var onOpenURL: ((BoardItem.ID) -> Void)?
+    var onOpenFile: ((BoardItem.ID) -> Void)?
+    var onRevealFile: ((BoardItem.ID) -> Void)?
     var onDuplicate: ((BoardItem.ID) -> Void)?
     var onDelete: ((BoardItem.ID) -> Void)?
     var onImport: (([BoardImportIntent], BoardPoint) -> Void)?
@@ -119,7 +125,12 @@ final class BoardMouseCatcherView: NSView {
         onSelect?(item.id)
 
         if event.clickCount == 2 {
-            onEdit?(item.id)
+            if case .file = item.content {
+                onOpenFile?(item.id)
+            } else {
+                onEdit?(item.id)
+            }
+
             return
         }
 
@@ -190,7 +201,7 @@ final class BoardMouseCatcherView: NSView {
         if case .url = item.content {
             let openItem = NSMenuItem(
                 title: "Open Link",
-                action: #selector(openContextItem),
+                action: #selector(openContextURLItem),
                 keyEquivalent: ""
             )
             openItem.target = self
@@ -198,13 +209,32 @@ final class BoardMouseCatcherView: NSView {
             menu.addItem(.separator())
         }
 
-        let editItem = NSMenuItem(
-            title: "Edit",
-            action: #selector(editContextItem),
-            keyEquivalent: ""
-        )
-        editItem.target = self
-        menu.addItem(editItem)
+        if case .file = item.content {
+            let openItem = NSMenuItem(
+                title: "Open File",
+                action: #selector(openContextFileItem),
+                keyEquivalent: ""
+            )
+            openItem.target = self
+            menu.addItem(openItem)
+
+            let revealItem = NSMenuItem(
+                title: "Reveal in Finder",
+                action: #selector(revealContextFileItem),
+                keyEquivalent: ""
+            )
+            revealItem.target = self
+            menu.addItem(revealItem)
+
+        } else {
+            let editItem = NSMenuItem(
+                title: "Edit",
+                action: #selector(editContextItem),
+                keyEquivalent: ""
+            )
+            editItem.target = self
+            menu.addItem(editItem)
+        }
 
         menu.addItem(.separator())
 
@@ -255,12 +285,30 @@ final class BoardMouseCatcherView: NSView {
         self.contextItemID = nil
     }
 
-    @objc private func openContextItem() {
+    @objc private func openContextURLItem() {
         guard let contextItemID else {
             return
         }
 
         onOpenURL?(contextItemID)
+        self.contextItemID = nil
+    }
+
+    @objc private func openContextFileItem() {
+        guard let contextItemID else {
+            return
+        }
+
+        onOpenFile?(contextItemID)
+        self.contextItemID = nil
+    }
+
+    @objc private func revealContextFileItem() {
+        guard let contextItemID else {
+            return
+        }
+
+        onRevealFile?(contextItemID)
         self.contextItemID = nil
     }
 
