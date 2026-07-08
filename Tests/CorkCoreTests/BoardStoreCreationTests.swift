@@ -24,6 +24,7 @@ final class BoardStoreCreationTests: XCTestCase {
 
         XCTAssertEqual(card.title, "Draft Note")
         XCTAssertEqual(card.body, "Keep this visible.")
+        XCTAssertEqual(card.format, .plainText)
     }
 
     func testCreateTextCardUsesFallbackTitle() {
@@ -37,6 +38,25 @@ final class BoardStoreCreationTests: XCTestCase {
         }
 
         XCTAssertEqual(card.title, "Untitled Note")
+    }
+
+    func testCreateTextCardCanCreateMarkdownItem() {
+        let board = CorkBoard(name: "Board")
+        let store = BoardStore(boards: [board])
+
+        let item = store.createTextCard(
+            title: "Markdown Note",
+            body: "**Keep this visible.**",
+            format: .markdown
+        )
+
+        guard case .text(let card) = item.content else {
+            return XCTFail("Expected a text card.")
+        }
+
+        XCTAssertEqual(card.title, "Markdown Note")
+        XCTAssertEqual(card.body, "**Keep this visible.**")
+        XCTAssertEqual(card.format, .markdown)
     }
 
     func testCreateChecklistCardAddsSelectedChecklistItem() {
@@ -166,6 +186,160 @@ final class BoardStoreCreationTests: XCTestCase {
         XCTAssertEqual(card.url, url)
     }
 
+    func testCreateFileCardAddsSelectedFileItem() {
+        let board = CorkBoard(name: "Board")
+        let store = BoardStore(boards: [board])
+        let url = URL(fileURLWithPath: "/tmp/reference.pdf")
+
+        let item = store.createFileCard(
+            title: "  Reference  ",
+            url: url,
+            at: BoardPoint(x: 130, y: 160)
+        )
+
+        XCTAssertEqual(store.selectedBoard.items.count, 1)
+        XCTAssertEqual(store.selectedItemID, item.id)
+        XCTAssertEqual(item.frame.origin, BoardPoint(x: 130, y: 160))
+        XCTAssertEqual(item.frame.size, BoardStore.Defaults.fileCardSize)
+
+        guard case .file(let card) = item.content else {
+            return XCTFail("Expected a file card.")
+        }
+
+        XCTAssertEqual(card.title, "Reference")
+        XCTAssertEqual(card.url, url)
+    }
+
+    func testCreateFileCardUsesFilenameFallbackTitle() {
+        let board = CorkBoard(name: "Board")
+        let store = BoardStore(boards: [board])
+        let url = URL(fileURLWithPath: "/tmp/Reference Brief.pdf")
+
+        let item = store.createFileCard(title: "   ", url: url)
+
+        guard case .file(let card) = item.content else {
+            return XCTFail("Expected a file card.")
+        }
+
+        XCTAssertEqual(card.title, "Reference Brief")
+    }
+
+    func testCreateFileCardClampsToCanvasBounds() {
+        let board = CorkBoard(name: "Board")
+        let store = BoardStore(boards: [board])
+        let url = URL(fileURLWithPath: "/tmp/reference.pdf")
+
+        let item = store.createFileCard(
+            title: "Reference",
+            url: url,
+            at: BoardPoint(x: 999, y: 999),
+            constrainedTo: BoardSize(width: 320, height: 260)
+        )
+
+        XCTAssertEqual(item.frame.origin, BoardPoint(x: 28, y: 98))
+    }
+
+    func testCreateFileCardAutosavesWhenRepositoryIsConfigured() {
+        let board = CorkBoard(name: "Board")
+        let repository = CapturingCreationRepository()
+        let store = BoardStore(
+            boards: [board],
+            repository: repository,
+            autosaveDelay: 0
+        )
+        let url = URL(fileURLWithPath: "/tmp/reference.pdf")
+
+        let item = store.createFileCard(title: "Reference", url: url)
+
+        XCTAssertEqual(repository.savedSnapshots.count, 1)
+        XCTAssertEqual(repository.savedSnapshots[0].selectedBoard.items.first?.id, item.id)
+
+        guard case .file(let card) = repository.savedSnapshots[0].selectedBoard.items[0].content else {
+            return XCTFail("Expected a file card.")
+        }
+
+        XCTAssertEqual(card.title, "Reference")
+        XCTAssertEqual(card.url, url)
+    }
+
+    func testCreateColorPaletteCardAddsSelectedPaletteItem() {
+        let board = CorkBoard(name: "Board")
+        let store = BoardStore(boards: [board])
+        let colors = [
+            PaletteColor(hex: "#f66"),
+            PaletteColor(hex: "4ecdc4")
+        ]
+
+        let item = store.createColorPaletteCard(
+            title: "  Launch Palette  ",
+            colors: colors,
+            at: BoardPoint(x: 140, y: 170)
+        )
+
+        XCTAssertEqual(store.selectedBoard.items.count, 1)
+        XCTAssertEqual(store.selectedItemID, item.id)
+        XCTAssertEqual(item.frame.origin, BoardPoint(x: 140, y: 170))
+        XCTAssertEqual(item.frame.size, BoardStore.Defaults.paletteCardSize)
+
+        guard case .palette(let card) = item.content else {
+            return XCTFail("Expected a color palette card.")
+        }
+
+        XCTAssertEqual(card.title, "Launch Palette")
+        XCTAssertEqual(card.colors.map(\.hex), ["#FF6666", "#4ECDC4"])
+    }
+
+    func testCreateColorPaletteCardUsesFallbackTitleAndColors() {
+        let board = CorkBoard(name: "Board")
+        let store = BoardStore(boards: [board])
+
+        let item = store.createColorPaletteCard(title: "   ", colors: [])
+
+        guard case .palette(let card) = item.content else {
+            return XCTFail("Expected a color palette card.")
+        }
+
+        XCTAssertEqual(card.title, "Untitled Palette")
+        XCTAssertEqual(card.colors, ColorPaletteCard.defaultColors)
+    }
+
+    func testCreateColorPaletteCardClampsToCanvasBounds() {
+        let board = CorkBoard(name: "Board")
+        let store = BoardStore(boards: [board])
+
+        let item = store.createColorPaletteCard(
+            title: "Reference",
+            colors: [PaletteColor(hex: "#FF6B6B")],
+            at: BoardPoint(x: 999, y: 999),
+            constrainedTo: BoardSize(width: 320, height: 260)
+        )
+
+        XCTAssertEqual(item.frame.origin, BoardPoint(x: 48, y: 72))
+    }
+
+    func testCreateColorPaletteCardAutosavesWhenRepositoryIsConfigured() {
+        let board = CorkBoard(name: "Board")
+        let repository = CapturingCreationRepository()
+        let store = BoardStore(
+            boards: [board],
+            repository: repository,
+            autosaveDelay: 0
+        )
+        let colors = [PaletteColor(hex: "#FF6B6B")]
+
+        let item = store.createColorPaletteCard(title: "Palette", colors: colors)
+
+        XCTAssertEqual(repository.savedSnapshots.count, 1)
+        XCTAssertEqual(repository.savedSnapshots[0].selectedBoard.items.first?.id, item.id)
+
+        guard case .palette(let card) = repository.savedSnapshots[0].selectedBoard.items[0].content else {
+            return XCTFail("Expected a color palette card.")
+        }
+
+        XCTAssertEqual(card.title, "Palette")
+        XCTAssertEqual(card.colors, colors)
+    }
+
     func testUpdateTextCardChangesTextContentAndSelectsItem() {
         let item = BoardItem(
             frame: BoardRect(
@@ -188,6 +362,7 @@ final class BoardStoreCreationTests: XCTestCase {
 
         XCTAssertEqual(card.title, "New")
         XCTAssertEqual(card.body, "New body")
+        XCTAssertEqual(card.format, .plainText)
     }
 
     func testUpdateTextCardUsesFallbackTitle() {
@@ -208,6 +383,61 @@ final class BoardStoreCreationTests: XCTestCase {
         }
 
         XCTAssertEqual(card.title, "Untitled Note")
+    }
+
+    func testUpdateTextCardCanChangeFormat() {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: BoardPoint(x: 10, y: 10),
+                size: BoardSize(width: 120, height: 120)
+            ),
+            content: .text(TextCard(title: "Old", body: "Body"))
+        )
+        let board = CorkBoard(name: "Board", items: [item])
+        let store = BoardStore(boards: [board])
+
+        let didUpdate = store.updateTextCard(
+            item.id,
+            title: "New",
+            body: "**Body**",
+            format: .markdown
+        )
+
+        XCTAssertTrue(didUpdate)
+
+        guard case .text(let card) = store.selectedBoard.items[0].content else {
+            return XCTFail("Expected a text card.")
+        }
+
+        XCTAssertEqual(card.title, "New")
+        XCTAssertEqual(card.body, "**Body**")
+        XCTAssertEqual(card.format, .markdown)
+    }
+
+    func testUpdateTextCardPreservesFormatWhenFormatIsOmitted() {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: BoardPoint(x: 10, y: 10),
+                size: BoardSize(width: 120, height: 120)
+            ),
+            content: .text(TextCard(title: "Old", body: "**Body**", format: .markdown))
+        )
+        let board = CorkBoard(name: "Board", items: [item])
+        let store = BoardStore(boards: [board])
+
+        let didUpdate = store.updateTextCard(
+            item.id,
+            title: "New",
+            body: "**New body**"
+        )
+
+        XCTAssertTrue(didUpdate)
+
+        guard case .text(let card) = store.selectedBoard.items[0].content else {
+            return XCTFail("Expected a text card.")
+        }
+
+        XCTAssertEqual(card.format, .markdown)
     }
 
     func testUpdateChecklistCardChangesChecklistContent() {
@@ -316,6 +546,65 @@ final class BoardStoreCreationTests: XCTestCase {
         XCTAssertEqual(card.title, "developer.apple.com")
     }
 
+    func testUpdateColorPaletteCardChangesPaletteContentAndSelectsItem() {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: BoardPoint(x: 10, y: 10),
+                size: BoardSize(width: 120, height: 120)
+            ),
+            content: .palette(ColorPaletteCard(
+                title: "Old",
+                colors: [PaletteColor(hex: "#FF6B6B")]
+            ))
+        )
+        let board = CorkBoard(name: "Board", items: [item])
+        let store = BoardStore(boards: [board])
+        let colors = [
+            PaletteColor(hex: "#4ECDC4"),
+            PaletteColor(hex: "#292F36")
+        ]
+
+        let didUpdate = store.updateColorPaletteCard(
+            item.id,
+            title: "  New  ",
+            colors: colors
+        )
+
+        XCTAssertTrue(didUpdate)
+        XCTAssertEqual(store.selectedItemID, item.id)
+
+        guard case .palette(let card) = store.selectedBoard.items[0].content else {
+            return XCTFail("Expected a color palette card.")
+        }
+
+        XCTAssertEqual(card.title, "New")
+        XCTAssertEqual(card.colors, colors)
+    }
+
+    func testUpdateColorPaletteCardUsesFallbackTitleAndColors() {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: BoardPoint(x: 10, y: 10),
+                size: BoardSize(width: 120, height: 120)
+            ),
+            content: .palette(ColorPaletteCard(
+                title: "Old",
+                colors: [PaletteColor(hex: "#FF6B6B")]
+            ))
+        )
+        let board = CorkBoard(name: "Board", items: [item])
+        let store = BoardStore(boards: [board])
+
+        store.updateColorPaletteCard(item.id, title: "   ", colors: [])
+
+        guard case .palette(let card) = store.selectedBoard.items[0].content else {
+            return XCTFail("Expected a color palette card.")
+        }
+
+        XCTAssertEqual(card.title, "Untitled Palette")
+        XCTAssertEqual(card.colors, ColorPaletteCard.defaultColors)
+    }
+
     func testUpdateCardRejectsWrongContentType() {
         let item = BoardItem(
             frame: BoardRect(
@@ -422,6 +711,38 @@ final class BoardStoreCreationTests: XCTestCase {
 
         XCTAssertEqual(card.title, "New")
         XCTAssertEqual(card.url, url)
+    }
+
+    func testUpdateColorPaletteCardAutosavesWhenRepositoryIsConfigured() {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: BoardPoint(x: 10, y: 10),
+                size: BoardSize(width: 120, height: 120)
+            ),
+            content: .palette(ColorPaletteCard(
+                title: "Old",
+                colors: [PaletteColor(hex: "#FF6B6B")]
+            ))
+        )
+        let repository = CapturingCreationRepository()
+        let board = CorkBoard(name: "Board", items: [item])
+        let store = BoardStore(
+            boards: [board],
+            repository: repository,
+            autosaveDelay: 0
+        )
+        let colors = [PaletteColor(hex: "#4ECDC4")]
+
+        store.updateColorPaletteCard(item.id, title: "New", colors: colors)
+
+        XCTAssertEqual(repository.savedSnapshots.count, 1)
+
+        guard case .palette(let card) = repository.savedSnapshots[0].selectedBoard.items[0].content else {
+            return XCTFail("Expected a color palette card.")
+        }
+
+        XCTAssertEqual(card.title, "New")
+        XCTAssertEqual(card.colors, colors)
     }
 
     func testCreateCardClampsToCanvasBounds() {

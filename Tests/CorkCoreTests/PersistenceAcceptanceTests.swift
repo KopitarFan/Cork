@@ -148,6 +148,81 @@ final class PersistenceAcceptanceTests: XCTestCase {
         XCTAssertEqual(card.url, url)
     }
 
+    func testFileCardPersistsThroughRepositoryAndFreshStore() throws {
+        let board = CorkBoard(name: "Board")
+        let repository = JSONBoardRepository(fileURL: makeTemporaryFileURL())
+        let store = BoardStore(
+            boards: [board],
+            repository: repository,
+            autosaveDelay: 0
+        )
+        let url = URL(fileURLWithPath: "/tmp/reference.pdf")
+
+        let item = store.createFileCard(
+            title: "Reference",
+            url: url,
+            at: BoardPoint(x: 72, y: 96)
+        )
+
+        let loadedSnapshot = try XCTUnwrap(repository.loadSnapshot())
+        let restoredStore = BoardStore(
+            snapshot: loadedSnapshot,
+            repository: repository,
+            autosaveDelay: 0
+        )
+
+        XCTAssertEqual(restoredStore.selectedItemID, nil)
+        XCTAssertEqual(restoredStore.selectedBoard.items[0].id, item.id)
+        XCTAssertEqual(restoredStore.selectedBoard.items[0].frame.origin, BoardPoint(x: 72, y: 96))
+        XCTAssertEqual(restoredStore.selectedBoard.items[0].frame.size, BoardStore.Defaults.fileCardSize)
+
+        guard case .file(let card) = restoredStore.selectedBoard.items[0].content else {
+            return XCTFail("Expected a file card.")
+        }
+
+        XCTAssertEqual(card.title, "Reference")
+        XCTAssertEqual(card.url, url)
+    }
+
+    func testColorPaletteCardPersistsThroughRepositoryAndFreshStore() throws {
+        let board = CorkBoard(name: "Board")
+        let repository = JSONBoardRepository(fileURL: makeTemporaryFileURL())
+        let store = BoardStore(
+            boards: [board],
+            repository: repository,
+            autosaveDelay: 0
+        )
+        let colors = [
+            PaletteColor(hex: "#FF6B6B"),
+            PaletteColor(hex: "#4ECDC4")
+        ]
+
+        let item = store.createColorPaletteCard(
+            title: "Reference",
+            colors: colors,
+            at: BoardPoint(x: 72, y: 96)
+        )
+
+        let loadedSnapshot = try XCTUnwrap(repository.loadSnapshot())
+        let restoredStore = BoardStore(
+            snapshot: loadedSnapshot,
+            repository: repository,
+            autosaveDelay: 0
+        )
+
+        XCTAssertEqual(restoredStore.selectedItemID, nil)
+        XCTAssertEqual(restoredStore.selectedBoard.items[0].id, item.id)
+        XCTAssertEqual(restoredStore.selectedBoard.items[0].frame.origin, BoardPoint(x: 72, y: 96))
+        XCTAssertEqual(restoredStore.selectedBoard.items[0].frame.size, BoardStore.Defaults.paletteCardSize)
+
+        guard case .palette(let card) = restoredStore.selectedBoard.items[0].content else {
+            return XCTFail("Expected a color palette card.")
+        }
+
+        XCTAssertEqual(card.title, "Reference")
+        XCTAssertEqual(card.colors, colors)
+    }
+
     func testRepositoryRoundTripPreservesFullBoardLibrary() throws {
         let first = CorkBoard(
             name: "Writing",
@@ -157,7 +232,11 @@ final class PersistenceAcceptanceTests: XCTestCase {
                         origin: BoardPoint(x: 24, y: 36),
                         size: BoardSize(width: 220, height: 160)
                     ),
-                    content: .text(TextCard(title: "Thread", body: "Keep this visible."))
+                    content: .text(TextCard(
+                        title: "Thread",
+                        body: "**Keep this visible.**",
+                        format: .markdown
+                    ))
                 )
             ]
         )
@@ -195,6 +274,30 @@ final class PersistenceAcceptanceTests: XCTestCase {
                     content: .url(URLCard(
                         title: "Release Notes",
                         url: URL(string: "https://example.com/release-notes")!
+                    ))
+                ),
+                BoardItem(
+                    frame: BoardRect(
+                        origin: BoardPoint(x: 90, y: 360),
+                        size: BoardSize(width: 280, height: 150)
+                    ),
+                    content: .file(FileCard(
+                        title: "Spec",
+                        url: URL(fileURLWithPath: "/tmp/spec.pdf")
+                    ))
+                ),
+                BoardItem(
+                    frame: BoardRect(
+                        origin: BoardPoint(x: 390, y: 340),
+                        size: BoardSize(width: 260, height: 176)
+                    ),
+                    content: .palette(ColorPaletteCard(
+                        title: "Launch Colors",
+                        colors: [
+                            PaletteColor(hex: "#FF6B6B"),
+                            PaletteColor(hex: "#4ECDC4"),
+                            PaletteColor(hex: "#292F36")
+                        ]
                     ))
                 )
             ]

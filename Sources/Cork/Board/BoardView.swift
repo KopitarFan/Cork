@@ -60,6 +60,12 @@ struct BoardView: View {
                         onOpenURL: { itemID in
                             openURLCard(itemID)
                         },
+                        onOpenFile: { itemID in
+                            openFileCard(itemID)
+                        },
+                        onRevealFile: { itemID in
+                            revealFileCard(itemID)
+                        },
                         onDuplicate: { itemID in
                             boardStore.duplicateItem(
                                 itemID,
@@ -118,6 +124,7 @@ struct BoardView: View {
         boardStore.createTextCard(
             title: card.title,
             body: card.body,
+            format: card.format,
             at: originForNewCard(size: BoardStore.Defaults.textCardSize),
             constrainedTo: canvasSize
         )
@@ -154,8 +161,33 @@ struct BoardView: View {
         )
     }
 
+    private func createColorPaletteCard() {
+        let draft = ColorPaletteCard(
+            title: "Untitled Palette",
+            colors: ColorPaletteCard.defaultColors
+        )
+
+        guard let card = CorkDialogs.promptForColorPaletteCard(
+            title: "New Color Palette",
+            card: draft
+        ) else {
+            return
+        }
+
+        boardStore.createColorPaletteCard(
+            title: card.title,
+            colors: card.colors,
+            at: originForNewCard(size: BoardStore.Defaults.paletteCardSize),
+            constrainedTo: canvasSize
+        )
+    }
+
     private func editSelectedItem() {
         guard let selectedItem = boardStore.selectedItem else {
+            return
+        }
+
+        guard selectedItem.isEditable else {
             return
         }
 
@@ -179,7 +211,8 @@ struct BoardView: View {
             boardStore.updateTextCard(
                 item.id,
                 title: editedCard.title,
-                body: editedCard.body
+                body: editedCard.body,
+                format: editedCard.format
             )
 
         case .checklist(let card):
@@ -223,6 +256,23 @@ struct BoardView: View {
                 title: editedCard.title,
                 url: editedCard.url
             )
+
+        case .file:
+            return
+
+        case .palette(let card):
+            guard let editedCard = CorkDialogs.promptForColorPaletteCard(
+                title: "Edit Color Palette",
+                card: card
+            ) else {
+                return
+            }
+
+            boardStore.updateColorPaletteCard(
+                item.id,
+                title: editedCard.title,
+                colors: editedCard.colors
+            )
         }
     }
 
@@ -234,6 +284,26 @@ struct BoardView: View {
         }
 
         NSWorkspace.shared.open(card.url)
+    }
+
+    private func openFileCard(_ itemID: BoardItem.ID) {
+        guard let item = boardStore.selectedBoard.items.first(where: { $0.id == itemID }),
+              case .file(let card) = item.content
+        else {
+            return
+        }
+
+        NSWorkspace.shared.open(card.url)
+    }
+
+    private func revealFileCard(_ itemID: BoardItem.ID) {
+        guard let item = boardStore.selectedBoard.items.first(where: { $0.id == itemID }),
+              case .file(let card) = item.content
+        else {
+            return
+        }
+
+        NSWorkspace.shared.activateFileViewerSelecting([card.url])
     }
 
     private func createBoard() {
@@ -342,7 +412,7 @@ struct BoardView: View {
                     .frame(width: 24, height: 24)
             }
             .buttonStyle(.borderless)
-            .disabled(boardStore.selectedItem == nil)
+            .disabled(boardStore.selectedItem?.isEditable != true)
             .help("Edit Selected Card")
 
             boardActionsMenu
@@ -369,6 +439,12 @@ struct BoardView: View {
                 createImageCard()
             } label: {
                 Label("Image", systemImage: "photo.badge.plus")
+            }
+
+            Button {
+                createColorPaletteCard()
+            } label: {
+                Label("Color Palette", systemImage: "swatchpalette")
             }
         } label: {
             Image(systemName: "plus")
@@ -439,5 +515,15 @@ private struct BoardCanvasBackground: View {
                 endPoint: .bottom
             )
         )
+    }
+}
+
+private extension BoardItem {
+    var isEditable: Bool {
+        if case .file = content {
+            return false
+        }
+
+        return true
     }
 }

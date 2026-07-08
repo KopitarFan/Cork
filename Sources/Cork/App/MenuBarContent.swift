@@ -37,6 +37,12 @@ struct MenuBarContent: View {
             } label: {
                 Label("Image", systemImage: "photo.badge.plus")
             }
+
+            Button {
+                createColorPaletteCard()
+            } label: {
+                Label("Color Palette", systemImage: "swatchpalette")
+            }
         }
 
         Menu("Boards") {
@@ -93,7 +99,7 @@ struct MenuBarContent: View {
             return
         }
 
-        boardStore.createTextCard(title: card.title, body: card.body)
+        boardStore.createTextCard(title: card.title, body: card.body, format: card.format)
         coordinator.showBoard()
     }
 
@@ -120,6 +126,23 @@ struct MenuBarContent: View {
             title: CorkDialogs.defaultImageTitle(for: imageURL),
             source: .fileReference(imageURL)
         )
+        coordinator.showBoard()
+    }
+
+    private func createColorPaletteCard() {
+        let draft = ColorPaletteCard(
+            title: "Untitled Palette",
+            colors: ColorPaletteCard.defaultColors
+        )
+
+        guard let card = CorkDialogs.promptForColorPaletteCard(
+            title: "New Color Palette",
+            card: draft
+        ) else {
+            return
+        }
+
+        boardStore.createColorPaletteCard(title: card.title, colors: card.colors)
         coordinator.showBoard()
     }
 
