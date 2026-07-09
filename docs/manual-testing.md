@@ -97,34 +97,55 @@ Failure notes:
 
 ## Board Management
 
+Run this section for Milestone 8 and whenever board metadata, the menu bar `Boards` menu, or board header board-actions menu changes.
+
 Steps:
 
-1. Use the board header board-actions menu to create a new board.
-2. Give it a unique name.
-3. Add one text note to the new board.
-4. Rename the board.
-5. Switch to another board from the menu bar.
-6. Switch back to the renamed board.
-7. Quit and relaunch Cork.
-8. Verify the renamed board and its card are still present.
-9. Create a temporary board.
-10. Delete the temporary board.
-11. Try deleting the only remaining board if the library has just one board.
+1. Launch Cork with `swift run Cork`.
+2. Use the menu bar `Boards` menu to create three boards named `Alpha`, `Beta`, and `Gamma`.
+3. Add one text note to `Beta`.
+4. Open the menu bar `Boards` menu and verify `Alpha`, `Beta`, and `Gamma` are all listed.
+5. Select `Beta` from the `Boards` menu.
+6. Open `Boards` again and verify `Beta` has the selected-board checkmark.
+7. Choose `Pin Current Board`.
+8. Reopen `Boards` and verify `Beta` appears in the pinned group above unpinned boards.
+9. Choose `Unpin Current Board`.
+10. Reopen `Boards` and verify there is no extra `Beta` row below `New Board`; `Beta` should only appear in the board list.
+11. Choose `Duplicate Current Board` and verify a `Beta Copy` board is selected.
+12. Use `Move Current Board Up` and `Move Current Board Down` from the menu bar and verify the board list order changes.
+13. Repeat pin/unpin, duplicate, and move from the board header ellipsis menu.
+14. Rename `Beta Copy`.
+15. Create a temporary board and delete it.
+16. Try deleting the only remaining board if the library has just one board.
+17. Quit and relaunch Cork.
+18. Verify board order, pinned state, renamed boards, duplicated boards, selected board, and board contents restore correctly.
 
 Expected:
 
 - New boards are selected immediately.
 - Board names trim extra whitespace.
 - Blank board names are ignored.
+- The menu bar `Boards` menu lists all boards.
+- Pinned boards appear above unpinned boards.
+- Selected boards show a checkmark.
+- Pinned, unselected boards show a pin icon.
+- Current-board actions do not create duplicate board-name rows under `New Board`.
+- Duplicated boards copy their cards and are selected immediately.
+- Duplicated boards are unpinned by default.
+- Move up/down actions reorder the board list and disable at the top and bottom edges.
 - Renamed boards appear in both the header and menu bar.
 - Deleting a board requires confirmation.
 - Cancel is the default-safe path in the delete confirmation.
 - Cork prevents deleting the final remaining board.
-- Board switching, board names, and board deletion persist across relaunch.
+- Board switching, board names, pinned state, board order, duplication, and board deletion persist across relaunch.
 
 Failure notes:
 
 - Whether the selected board changed unexpectedly.
+- Whether a pinned board appeared in the wrong group.
+- Whether a board appeared twice in the `Boards` menu.
+- Whether move up/down changed the wrong board.
+- Whether duplicated cards kept the original board's contents.
 - Whether deleted boards came back after relaunch.
 - Whether deleting the selected board chose a sensible fallback board.
 - Whether menu bar board names became stale.

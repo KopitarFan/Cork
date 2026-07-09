@@ -46,39 +46,19 @@ struct MenuBarContent: View {
         }
 
         Menu("Boards") {
+            boardSwitcher
+
+            Divider()
+
             Button {
                 createBoard()
             } label: {
                 Label("New Board", systemImage: "plus.rectangle.on.rectangle")
             }
 
-            Button {
-                renameSelectedBoard()
-            } label: {
-                Label("Rename Current Board", systemImage: "pencil")
-            }
+            Divider()
 
-            Button {
-                deleteSelectedBoard()
-            } label: {
-                Label("Delete Current Board", systemImage: "trash")
-            }
-            .disabled(boardStore.boards.count <= 1)
-        }
-
-        Divider()
-
-        ForEach(boardStore.boards) { board in
-            Button {
-                boardStore.selectBoard(board.id)
-                coordinator.showBoard()
-            } label: {
-                if board.id == boardStore.selectedBoardID {
-                    Label(board.name, systemImage: "checkmark")
-                } else {
-                    Text(board.name)
-                }
-            }
+            currentBoardActions
         }
 
         Divider()
@@ -87,6 +67,124 @@ struct MenuBarContent: View {
             NSApp.terminate(nil)
         }
         .keyboardShortcut("q")
+    }
+
+    @ViewBuilder
+    private var currentBoardActions: some View {
+        Button {
+            toggleSelectedBoardPinned()
+        } label: {
+            Label(
+                boardStore.selectedBoard.isPinned ? "Unpin Current Board" : "Pin Current Board",
+                systemImage: boardStore.selectedBoard.isPinned ? "pin.slash" : "pin"
+            )
+        }
+
+        Button {
+            duplicateSelectedBoard()
+        } label: {
+            Label("Duplicate Current Board", systemImage: "rectangle.on.rectangle")
+        }
+
+        Button {
+            moveSelectedBoardUp()
+        } label: {
+            Label("Move Current Board Up", systemImage: "arrow.up")
+        }
+        .disabled(selectedBoardIndex == nil || selectedBoardIndex == 0)
+
+        Button {
+            moveSelectedBoardDown()
+        } label: {
+            Label("Move Current Board Down", systemImage: "arrow.down")
+        }
+        .disabled(selectedBoardIndex == nil || selectedBoardIndex == boardStore.boards.count - 1)
+
+        Divider()
+
+        Button {
+            renameSelectedBoard()
+        } label: {
+            Label("Rename Current Board", systemImage: "pencil")
+        }
+
+        Button {
+            deleteSelectedBoard()
+        } label: {
+            Label("Delete Current Board", systemImage: "trash")
+        }
+        .disabled(boardStore.boards.count <= 1)
+    }
+
+    @ViewBuilder
+    private var boardSwitcher: some View {
+        ForEach(pinnedBoards) { board in
+            boardSelectionButton(for: board)
+        }
+
+        if !pinnedBoards.isEmpty && !unpinnedBoards.isEmpty {
+            Divider()
+        }
+
+        ForEach(unpinnedBoards) { board in
+            boardSelectionButton(for: board)
+        }
+    }
+
+    private func boardSelectionButton(for board: CorkBoard) -> some View {
+        Button {
+            boardStore.selectBoard(board.id)
+            coordinator.showBoard()
+        } label: {
+            if board.id == boardStore.selectedBoardID {
+                Label(board.name, systemImage: "checkmark")
+            } else if board.isPinned {
+                Label(board.name, systemImage: "pin.fill")
+            } else {
+                Text(board.name)
+            }
+        }
+    }
+
+    private var pinnedBoards: [CorkBoard] {
+        boardStore.boards.filter(\.isPinned)
+    }
+
+    private var unpinnedBoards: [CorkBoard] {
+        boardStore.boards.filter { !$0.isPinned }
+    }
+
+    private var selectedBoardIndex: Int? {
+        boardStore.boards.firstIndex { $0.id == boardStore.selectedBoardID }
+    }
+
+    private func toggleSelectedBoardPinned() {
+        boardStore.toggleBoardPinned(id: boardStore.selectedBoardID)
+    }
+
+    private func duplicateSelectedBoard() {
+        boardStore.duplicateBoard(id: boardStore.selectedBoardID)
+        coordinator.showBoard()
+    }
+
+    private func moveSelectedBoardUp() {
+        guard let selectedBoardIndex,
+              selectedBoardIndex > 0
+        else {
+            return
+        }
+
+        boardStore.moveBoard(id: boardStore.selectedBoardID, toIndex: selectedBoardIndex - 1)
+    }
+
+    private func moveSelectedBoardDown() {
+        guard let selectedBoardIndex,
+              selectedBoardIndex < boardStore.boards.count - 1
+        else {
+            return
+        }
+
+        boardStore.moveBoard(id: boardStore.selectedBoardID, toIndex: selectedBoardIndex + 1)
     }
 
     private func createTextCard() {

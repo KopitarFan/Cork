@@ -369,6 +369,10 @@ Deferred:
 
 ## Iteration 8: Board Management
 
+Status: complete.
+
+Completed: 2026-07-09.
+
 Goal: multiple boards become practical for everyday use.
 
 Scope:
@@ -382,8 +386,30 @@ Scope:
 Exit criteria:
 
 - A user with several boards can switch quickly.
-- Favorite boards are easy to reach.
+- Pinned boards are easy to reach.
 - Board management remains lightweight.
+
+Completed:
+
+- Added `CorkBoard.isPinned` and `CorkBoard.sortIndex` management metadata with backward-compatible decoding for older saved boards.
+- Added `BoardStore` commands for pinning, unpinning, reordering, and duplicating boards.
+- Normalized board ordering after create, move, duplicate, and delete operations.
+- Duplicating a board creates a selected copy with fresh card IDs.
+- Updated the menu bar `Boards` menu to list all boards, with pinned boards first.
+- Added current-board menu actions for pin/unpin, duplicate, move up/down, rename, and delete.
+- Mirrored board-management actions in the board header ellipsis menu.
+- Added tests for board metadata decoding, pinning, ordering, duplication, autosave, and persistence.
+
+Closeout verification:
+
+- Manual board-management testing covered board listing, pin/unpin, duplicate, move up/down, relaunch persistence, and the `Boards` menu placement.
+- Fixed the confusing extra current-board row that appeared under `New Board` after pinning and unpinning.
+- Automated verification passed: `swift test`, `swift build`, and `git diff --check`.
+- `swift test` passed with 134 tests and 0 failures.
+
+Deferred:
+
+- A separate board picker. The current menu remains light enough for this milestone.
 
 ## Iteration 9: Preferences and System Behavior
 

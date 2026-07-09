@@ -21,7 +21,7 @@ Opening Cork should feel like pulling back a curtain, not launching an app.
 
 ## Current Status
 
-The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, drag-and-drop imports, resizing/layout polish, and the core Milestone 7 card types:
+The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, drag-and-drop imports, resizing/layout polish, the core Milestone 7 card types, and board-management polish:
 
 - Menu bar app.
 - Global keyboard shortcut: `Command` + `Option` + `B`.
@@ -36,7 +36,8 @@ The project currently has the first runnable foundation, persistence layer, card
 - Selected-card state with keyboard movement.
 - Duplicate, delete, and edit actions for cards.
 - Context menus for card actions, including double-click edit.
-- Board creation, rename, deletion, and menu-bar board switching.
+- Board creation, rename, deletion, duplicate, pin/unpin, ordering, and menu-bar board switching.
+- Pinned boards appear first in the `Boards` menu.
 - Drag-and-drop image imports from Finder.
 - Drag-and-drop plain text imports.
 - Drag-and-drop URL imports as dedicated URL cards.
@@ -51,7 +52,7 @@ The project currently has the first runnable foundation, persistence layer, card
 - JSON-backed persistence in Application Support.
 - Autosave for board selection, board changes, card creation, card editing, card movement, card resizing, and card actions.
 - A separate `CorkCore` target for board and card models.
-- Unit tests for board selection, card movement, card resizing, card creation, URL/file/palette card creation/editing/imports, Markdown text cards, board lifecycle commands, import resolution, snapshot encoding, JSON persistence, and autosave.
+- Unit tests for board selection, board management, card movement, card resizing, card creation, URL/file/palette card creation/editing/imports, Markdown text cards, board lifecycle commands, import resolution, snapshot encoding, JSON persistence, and autosave.
 
 Not implemented yet:
 
@@ -114,11 +115,11 @@ The codebase is intentionally split so product logic can be tested without AppKi
 
 ## Next Development Slice
 
-The next slice is Milestone 8: board management polish.
+The next slice is Milestone 9: preferences and system behavior.
 
-- Make switching between several boards faster.
-- Add pinned or favorite boards.
-- Add board ordering or duplicate board if the menu starts to feel crowded.
+- Add a lightweight preferences surface.
+- Make the global shortcut configurable.
+- Add launch-at-login and board opacity settings.
 - Keep rich URL previews, favicons, copied asset storage, and sandbox bookmarks as later follow-ups.
 
 See [docs/milestones.md](docs/milestones.md) for the broader build path.

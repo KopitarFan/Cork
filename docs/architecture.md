@@ -170,7 +170,7 @@ Current persistence behavior:
 - Save all boards.
 - Save the selected board ID.
 - Save card frames and card content.
-- Save board names and board lifecycle changes.
+- Save board names, pinned state, board ordering, and board lifecycle changes.
 - Save created and edited text, Markdown, checklist, image, URL, file, and palette cards.
 - Save resized card frames.
 - Save local image cards as file references.
@@ -201,6 +201,8 @@ classDiagram
         String name
         Date createdAt
         Date updatedAt
+        Bool isPinned
+        Int sortIndex
         BoardItem[] items
     }
 
@@ -240,6 +242,10 @@ Examples:
 - `selectBoard(id:)`
 - `createBoard(name:)`
 - `renameBoard(id:name:)`
+- `setBoardPinned(id:isPinned:)`
+- `toggleBoardPinned(id:)`
+- `moveBoard(id:toIndex:)`
+- `duplicateBoard(id:)`
 - `deleteBoard(id:)`
 - `createTextCard(title:body:format:at:)`
 - `createChecklistCard(title:entries:at:)`
@@ -261,6 +267,13 @@ Examples:
 - `importItems(_:at:constrainedTo:)`
 
 The command layer currently lives in `BoardStore`. If it grows too large, the next extraction should be a small command facade around the store rather than direct view mutation.
+
+Board management is intentionally still lightweight:
+
+- Pinned boards are regular boards with `isPinned` metadata, not a separate collection.
+- Board ordering is stored with `sortIndex` and normalized after create, move, duplicate, and delete operations.
+- Duplicating a board copies its cards with new item IDs, selects the copy, and leaves the copy unpinned.
+- The menu bar `Boards` menu lists boards first, with pinned boards above unpinned boards, then shows current-board actions.
 
 ## Drag and Drop
 
@@ -319,6 +332,7 @@ As the app matures, user-visible recovery should be added for cases where data m
 Keep tests concentrated around behavior that should not regress:
 
 - Board selection.
+- Board pinning, ordering, duplication, and lifecycle commands.
 - Card movement and resizing bounds.
 - Card creation commands.
 - Card editing commands.

@@ -330,6 +330,34 @@ struct BoardView: View {
         boardStore.renameBoard(id: boardStore.selectedBoardID, name: name)
     }
 
+    private func toggleSelectedBoardPinned() {
+        boardStore.toggleBoardPinned(id: boardStore.selectedBoardID)
+    }
+
+    private func duplicateSelectedBoard() {
+        boardStore.duplicateBoard(id: boardStore.selectedBoardID)
+    }
+
+    private func moveSelectedBoardUp() {
+        guard let selectedBoardIndex,
+              selectedBoardIndex > 0
+        else {
+            return
+        }
+
+        boardStore.moveBoard(id: boardStore.selectedBoardID, toIndex: selectedBoardIndex - 1)
+    }
+
+    private func moveSelectedBoardDown() {
+        guard let selectedBoardIndex,
+              selectedBoardIndex < boardStore.boards.count - 1
+        else {
+            return
+        }
+
+        boardStore.moveBoard(id: boardStore.selectedBoardID, toIndex: selectedBoardIndex + 1)
+    }
+
     private func deleteSelectedBoard() {
         guard boardStore.boards.count > 1,
               CorkDialogs.confirmBoardDeletion(boardName: boardStore.selectedBoard.name)
@@ -384,6 +412,10 @@ struct BoardView: View {
             x: max(12, ((canvasSize.width - size.width) / 2) + offset),
             y: max(12, ((canvasSize.height - size.height) / 2) + offset)
         )
+    }
+
+    private var selectedBoardIndex: Int? {
+        boardStore.boards.firstIndex { $0.id == boardStore.selectedBoardID }
     }
 
     private var header: some View {
@@ -467,6 +499,35 @@ struct BoardView: View {
             } label: {
                 Label("Rename Board", systemImage: "pencil")
             }
+
+            Button {
+                toggleSelectedBoardPinned()
+            } label: {
+                Label(
+                    boardStore.selectedBoard.isPinned ? "Unpin Board" : "Pin Board",
+                    systemImage: boardStore.selectedBoard.isPinned ? "pin.slash" : "pin"
+                )
+            }
+
+            Button {
+                duplicateSelectedBoard()
+            } label: {
+                Label("Duplicate Board", systemImage: "rectangle.on.rectangle")
+            }
+
+            Button {
+                moveSelectedBoardUp()
+            } label: {
+                Label("Move Board Up", systemImage: "arrow.up")
+            }
+            .disabled(selectedBoardIndex == nil || selectedBoardIndex == 0)
+
+            Button {
+                moveSelectedBoardDown()
+            } label: {
+                Label("Move Board Down", systemImage: "arrow.down")
+            }
+            .disabled(selectedBoardIndex == nil || selectedBoardIndex == boardStore.boards.count - 1)
 
             Divider()
 
