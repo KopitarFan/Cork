@@ -63,6 +63,13 @@ struct MenuBarContent: View {
 
         Divider()
 
+        Button("Preferences...") {
+            coordinator.showPreferences()
+        }
+        .keyboardShortcut(",", modifiers: [.command])
+
+        Divider()
+
         Button("Quit Cork") {
             NSApp.terminate(nil)
         }

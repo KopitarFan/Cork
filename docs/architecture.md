@@ -26,12 +26,14 @@ Those apps can keep being excellent at deep work. Cork should stay excellent at 
 flowchart LR
     User["User input"] --> Shell["App shell"]
     Shell --> Windowing["Board windowing"]
+    Shell --> Settings["Settings store"]
     Shell --> Commands["Board commands"]
     Windowing --> BoardUI["SwiftUI board UI"]
     BoardUI --> Commands
     Commands --> Store["Board store"]
     Store --> Domain["CorkCore domain model"]
-    Store --> Persistence["Persistence adapter"]
+    Store --> Persistence["Board persistence adapter"]
+    Settings --> SettingsPersistence["Settings persistence adapter"]
     Drop["Drag and drop adapter"] --> ImportResolver["Import resolver"]
     ImportResolver --> Commands
 ```
@@ -49,7 +51,9 @@ Current files:
 - `Sources/Cork/App/CorkApp.swift`
 - `Sources/Cork/App/AppCoordinator.swift`
 - `Sources/Cork/App/CorkDialogs.swift`
+- `Sources/Cork/App/LaunchAtLoginController.swift`
 - `Sources/Cork/App/MenuBarContent.swift`
+- `Sources/Cork/App/PreferencesWindowController.swift`
 
 Responsibilities:
 
@@ -58,6 +62,8 @@ Responsibilities:
 - Register global shortcuts.
 - Route user commands to the board store and panel controller.
 - Present native prompts for lightweight card and board editing.
+- Present the Preferences window.
+- Bridge system settings such as launch at login.
 - Keep app-level state such as whether the board is visible.
 
 The shell should remain thin. It should not directly encode board data, perform imports, or know persistence details.
@@ -88,9 +94,10 @@ Responsibilities:
 
 - Choose the target screen.
 - Calculate hidden and visible frames.
-- Animate from the top edge.
+- Animate from the configured slide edge.
 - Keep the panel lightweight and non-document-like.
-- Eventually support edges, opacity, multi-monitor behavior, and active-application rules.
+- Support board opacity through the SwiftUI board surface.
+- Eventually support deeper multi-monitor behavior and active-application rules.
 
 The panel controller should not know how board items are stored or rendered. It only hosts the board surface.
 
@@ -122,10 +129,12 @@ Guidelines:
 
 Current files:
 
+- `Sources/CorkCore/AppSettings.swift`
 - `Sources/CorkCore/BoardImportIntent.swift`
 - `Sources/CorkCore/BoardImportResolver.swift`
 - `Sources/CorkCore/BoardModels.swift`
 - `Sources/CorkCore/BoardStore.swift`
+- `Sources/CorkCore/SettingsStore.swift`
 
 `CorkCore` owns board state and user-level operations.
 
@@ -157,12 +166,23 @@ public protocol BoardRepository {
     func loadSnapshot() throws -> BoardLibrarySnapshot?
     func saveSnapshot(_ snapshot: BoardLibrarySnapshot) throws
 }
+
+public protocol SettingsRepository {
+    func loadSettings() throws -> AppSettings?
+    func saveSettings(_ settings: AppSettings) throws
+}
 ```
 
-The first implementation is `JSONBoardRepository`, which stores a `BoardLibrarySnapshot` at:
+The first board implementation is `JSONBoardRepository`, which stores a `BoardLibrarySnapshot` at:
 
 ```text
 ~/Library/Application Support/Cork/boards.json
+```
+
+The first settings implementation is `JSONSettingsRepository`, which stores `AppSettings` at:
+
+```text
+~/Library/Application Support/Cork/settings.json
 ```
 
 Current persistence behavior:
@@ -182,6 +202,16 @@ Current persistence behavior:
 - Fall back to sample boards if no saved state exists.
 - Debounce autosaves while cards are dragged.
 - Flush pending autosaves when Cork quits.
+
+Current settings behavior:
+
+- Save board opacity.
+- Save the selected slide edge.
+- Save the user's launch-at-login preference.
+- Restore settings automatically on launch.
+- Fall back to strong defaults if no saved settings exist.
+- Debounce settings autosaves.
+- Flush pending settings autosaves when Cork quits.
 
 Storage notes:
 

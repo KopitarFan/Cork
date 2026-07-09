@@ -4,6 +4,7 @@ import SwiftUI
 
 struct BoardView: View {
     @ObservedObject var boardStore: BoardStore
+    @ObservedObject var settingsStore: SettingsStore
     @State private var canvasSize = BoardSize(width: 900, height: 520)
     @State private var hoveredItemID: BoardItem.ID?
 
@@ -109,6 +110,7 @@ struct BoardView: View {
         }
         .shadow(color: .black.opacity(0.24), radius: 22, x: 0, y: 18)
         .padding(1)
+        .opacity(settingsStore.settings.boardOpacity)
     }
 
     private func createTextCard() {

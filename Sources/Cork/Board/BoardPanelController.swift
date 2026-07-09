@@ -6,12 +6,16 @@ import SwiftUI
 final class BoardPanelController {
     private let panel: BoardPanel
     private let hostingController: NSHostingController<BoardView>
+    private let settingsStore: SettingsStore
 
     private var visibleFrame: NSRect = .zero
     private var hiddenFrame: NSRect = .zero
 
-    init(boardStore: BoardStore) {
-        self.hostingController = NSHostingController(rootView: BoardView(boardStore: boardStore))
+    init(boardStore: BoardStore, settingsStore: SettingsStore) {
+        self.settingsStore = settingsStore
+        self.hostingController = NSHostingController(
+            rootView: BoardView(boardStore: boardStore, settingsStore: settingsStore)
+        )
         self.panel = BoardPanel(
             contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
@@ -39,6 +43,7 @@ final class BoardPanelController {
             return
         }
 
+        recalculateFrames()
         animatePanel(to: hiddenFrame) { [weak panel] in
             panel?.orderOut(nil)
         }
@@ -61,14 +66,28 @@ final class BoardPanelController {
         let screen = screenUnderMouse() ?? NSScreen.main ?? NSScreen.screens.first
         let screenFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1100, height: 760)
         let sideMargin = max(18, min(36, screenFrame.width * 0.025))
-        let topMargin = CGFloat(12)
+        let edgeMargin = CGFloat(12)
         let width = screenFrame.width - (sideMargin * 2)
         let height = min(screenFrame.height * 0.72, 720)
         let x = screenFrame.minX + sideMargin
-        let visibleY = screenFrame.maxY - height - topMargin
+        let topY = screenFrame.maxY - height - edgeMargin
+        let centeredY = screenFrame.midY - (height / 2)
+        let bottomY = screenFrame.minY + edgeMargin
 
-        visibleFrame = NSRect(x: x, y: visibleY, width: width, height: height)
-        hiddenFrame = NSRect(x: x, y: screenFrame.maxY + 8, width: width, height: height)
+        switch settingsStore.settings.boardSlideEdge {
+        case .top:
+            visibleFrame = NSRect(x: x, y: topY, width: width, height: height)
+            hiddenFrame = NSRect(x: x, y: screenFrame.maxY + 8, width: width, height: height)
+        case .bottom:
+            visibleFrame = NSRect(x: x, y: bottomY, width: width, height: height)
+            hiddenFrame = NSRect(x: x, y: screenFrame.minY - height - 8, width: width, height: height)
+        case .left:
+            visibleFrame = NSRect(x: x, y: centeredY, width: width, height: height)
+            hiddenFrame = NSRect(x: screenFrame.minX - width - 8, y: centeredY, width: width, height: height)
+        case .right:
+            visibleFrame = NSRect(x: x, y: centeredY, width: width, height: height)
+            hiddenFrame = NSRect(x: screenFrame.maxX + 8, y: centeredY, width: width, height: height)
+        }
     }
 
     private func screenUnderMouse() -> NSScreen? {
