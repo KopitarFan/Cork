@@ -413,6 +413,8 @@ Deferred:
 
 ## Iteration 9: Preferences and System Behavior
 
+Status: in progress.
+
 Goal: Cork becomes configurable without becoming fussy.
 
 Scope:
@@ -429,6 +431,33 @@ Exit criteria:
 - Preferences are discoverable but not central to the app.
 - Settings persist reliably.
 - Defaults remain strong enough that configuration is optional.
+
+Completed so far:
+
+- Added `AppSettings` for app-level preferences.
+- Added `SettingsRepository`, `JSONSettingsRepository`, and `SettingsStore`.
+- Store settings in `~/Library/Application Support/Cork/settings.json`.
+- Added a native Preferences window opened from the menu bar.
+- Fixed Preferences window ordering so it opens above the board.
+- Added a board opacity preference with live board preview.
+- Added a slide-edge preference with `Top`, `Bottom`, `Left`, and `Right` options.
+- Wired the board panel to show and hide from the selected slide edge.
+- Added launch-at-login preference plumbing through `SMAppService`.
+- Disabled the launch-at-login toggle in SwiftPM debug runs where Cork is not packaged as a `.app`.
+- Added settings tests for defaults, backward-compatible decoding, JSON persistence, store updates, autosave, and quit-time flush behavior.
+
+Automated verification:
+
+- `swift test --quiet` passed with 156 tests and 0 failures.
+- `swift build` passed.
+- `git diff --check` passed.
+
+Remaining:
+
+- Make the global shortcut configurable.
+- Verify launch-at-login behavior in a packaged `.app` build.
+- Decide how much multi-monitor behavior belongs in this milestone versus packaging/release readiness.
+- Keep active-application show/hide rules as optional follow-up unless the settings architecture needs it now.
 
 ## Iteration 10: Search and Quick Capture
 

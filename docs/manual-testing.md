@@ -40,7 +40,7 @@ Steps:
 Expected:
 
 - Cork appears in the menu bar.
-- The board slides down from the top edge.
+- The board slides in from the configured edge.
 - The board hides without leaving artifacts.
 - Cards drag smoothly and stay inside the board.
 - Board switching updates the visible board.
@@ -459,6 +459,49 @@ Failure notes:
 - Whether a large photo was involved, including approximate file size and dimensions if known.
 - Whether the issue persisted after quitting and relaunching Cork.
 
+## Preferences and System Behavior
+
+Use this section for Iteration 9 preferences work.
+
+Steps:
+
+1. Launch Cork with `swift run Cork`.
+2. Show Cork.
+3. Open the menu bar item and choose `Preferences...`.
+4. Verify the Preferences window appears in front of the board.
+5. Move the Board Opacity slider down and back up.
+6. Verify the board opacity changes live while the Preferences window remains usable.
+7. Choose each Slide Edge option: `Top`, `Bottom`, `Left`, and `Right`.
+8. After each edge change, hide Cork and show it again.
+9. Quit and relaunch Cork.
+10. Verify the selected opacity and slide edge restore after relaunch.
+11. Open Preferences and inspect the Launch at Login row.
+
+Expected:
+
+- Preferences opens from the menu bar and is not hidden behind the board.
+- Board opacity updates immediately and remains persisted after relaunch.
+- The board hides and reappears from the selected edge.
+- Top and bottom edges behave like a horizontal board.
+- Left and right edges slide horizontally from off-screen while keeping the board content usable.
+- In SwiftPM debug runs, Launch at Login is disabled with a packaged-app status message.
+
+Packaged-app follow-up:
+
+- Once Cork is built as a `.app`, the Launch at Login toggle should be tested again.
+- Turning the toggle on should register Cork in macOS Login Items.
+- Turning the toggle off should remove Cork from Login Items.
+- Relaunching Cork should reflect the actual system Login Items state.
+
+Failure notes:
+
+- Which preference was changed.
+- Whether the issue happened before or after relaunch.
+- Whether the board appeared from the wrong edge.
+- Whether the board appeared off-screen or behind another Cork window.
+- Whether Preferences was hidden by the board.
+- Whether the Launch at Login row was enabled in an unexpected build type.
+
 ## Full-Screen App Spaces
 
 Full-screen Spaces are the most important awkward case because Cork should feel like an overlay rather than an app switch.
@@ -706,6 +749,7 @@ Menu bar creation:
 Drag and drop imports:
 URL cards:
 Card resizing and layout polish:
+Preferences and system behavior:
 Full-screen Spaces:
 Multiple desktops:
 Multiple monitors:
