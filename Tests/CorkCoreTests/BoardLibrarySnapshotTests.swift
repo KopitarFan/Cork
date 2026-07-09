@@ -54,13 +54,41 @@ final class BoardLibrarySnapshotTests: XCTestCase {
                 ]
             ))
         )
-        let board = CorkBoard(name: "Milestone 2", items: [item])
+        let board = CorkBoard(
+            name: "Milestone 2",
+            isPinned: true,
+            sortIndex: 3,
+            items: [item]
+        )
         let snapshot = BoardLibrarySnapshot(boards: [board], selectedBoardID: board.id)
 
         let data = try JSONEncoder().encode(snapshot)
         let decodedSnapshot = try JSONDecoder().decode(BoardLibrarySnapshot.self, from: data)
 
         XCTAssertEqual(decodedSnapshot, snapshot)
+    }
+
+    func testCorkBoardDefaultsManagementMetadataWhenDecodedWithoutFields() throws {
+        let board = CorkBoard(
+            name: "Legacy",
+            isPinned: true,
+            sortIndex: 4
+        )
+        var payload = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: JSONEncoder().encode(board)
+            ) as? [String: Any]
+        )
+        payload.removeValue(forKey: "isPinned")
+        payload.removeValue(forKey: "sortIndex")
+        let data = try JSONSerialization.data(withJSONObject: payload)
+
+        let decodedBoard = try JSONDecoder().decode(CorkBoard.self, from: data)
+
+        XCTAssertEqual(decodedBoard.id, board.id)
+        XCTAssertEqual(decodedBoard.name, "Legacy")
+        XCTAssertFalse(decodedBoard.isPinned)
+        XCTAssertEqual(decodedBoard.sortIndex, 0)
     }
 
     func testTextCardDefaultsToPlainTextWhenDecodedWithoutFormat() throws {

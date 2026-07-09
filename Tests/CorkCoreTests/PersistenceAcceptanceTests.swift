@@ -223,9 +223,40 @@ final class PersistenceAcceptanceTests: XCTestCase {
         XCTAssertEqual(card.colors, colors)
     }
 
+    func testBoardManagementMetadataPersistsThroughRepositoryAndFreshStore() throws {
+        let first = CorkBoard(name: "First", sortIndex: 0)
+        let second = CorkBoard(name: "Second", sortIndex: 1)
+        let third = CorkBoard(name: "Third", sortIndex: 2)
+        let repository = JSONBoardRepository(fileURL: makeTemporaryFileURL())
+        let store = BoardStore(
+            boards: [first, second, third],
+            repository: repository,
+            autosaveDelay: 0
+        )
+
+        store.setBoardPinned(id: second.id, isPinned: true)
+        store.moveBoard(id: third.id, toIndex: 0)
+
+        let loadedSnapshot = try XCTUnwrap(repository.loadSnapshot())
+        let restoredStore = BoardStore(
+            snapshot: loadedSnapshot,
+            repository: repository,
+            autosaveDelay: 0
+        )
+
+        XCTAssertEqual(restoredStore.boards.map(\.id), [third.id, first.id, second.id])
+        XCTAssertEqual(restoredStore.boards.map(\.sortIndex), [0, 1, 2])
+        XCTAssertEqual(
+            restoredStore.boards.first { $0.id == second.id }?.isPinned,
+            true
+        )
+    }
+
     func testRepositoryRoundTripPreservesFullBoardLibrary() throws {
         let first = CorkBoard(
             name: "Writing",
+            isPinned: true,
+            sortIndex: 0,
             items: [
                 BoardItem(
                     frame: BoardRect(
@@ -242,6 +273,7 @@ final class PersistenceAcceptanceTests: XCTestCase {
         )
         let second = CorkBoard(
             name: "Release",
+            sortIndex: 1,
             items: [
                 BoardItem(
                     frame: BoardRect(

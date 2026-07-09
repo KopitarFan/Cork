@@ -5,6 +5,8 @@ public struct CorkBoard: Identifiable, Codable, Equatable, Sendable {
     public var name: String
     public var createdAt: Date
     public var updatedAt: Date
+    public var isPinned: Bool
+    public var sortIndex: Int
     public var items: [BoardItem]
 
     public init(
@@ -12,13 +14,51 @@ public struct CorkBoard: Identifiable, Codable, Equatable, Sendable {
         name: String,
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
+        isPinned: Bool = false,
+        sortIndex: Int = 0,
         items: [BoardItem] = []
     ) {
         self.id = id
         self.name = name
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.isPinned = isPinned
+        self.sortIndex = sortIndex
         self.items = items
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        sortIndex = try container.decodeIfPresent(Int.self, forKey: .sortIndex) ?? 0
+        items = try container.decode([BoardItem].self, forKey: .items)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encode(isPinned, forKey: .isPinned)
+        try container.encode(sortIndex, forKey: .sortIndex)
+        try container.encode(items, forKey: .items)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case createdAt
+        case updatedAt
+        case isPinned
+        case sortIndex
+        case items
     }
 }
 

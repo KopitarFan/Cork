@@ -330,10 +330,12 @@ public final class BoardStore: ObservableObject {
         let board = CorkBoard(
             name: sanitizedTitle(name, fallback: "Untitled Board"),
             createdAt: now,
-            updatedAt: now
+            updatedAt: now,
+            sortIndex: nextBoardSortIndex()
         )
 
         boards.append(board)
+        normalizeBoardSortIndices()
         selectedBoardID = board.id
         selectedItemID = nil
         scheduleAutosave()
@@ -363,6 +365,78 @@ public final class BoardStore: ObservableObject {
     }
 
     @discardableResult
+    public func setBoardPinned(id: CorkBoard.ID, isPinned: Bool) -> Bool {
+        guard let boardIndex = boards.firstIndex(where: { $0.id == id }),
+              boards[boardIndex].isPinned != isPinned
+        else {
+            return false
+        }
+
+        boards[boardIndex].isPinned = isPinned
+        boards[boardIndex].updatedAt = Date()
+        scheduleAutosave()
+
+        return true
+    }
+
+    @discardableResult
+    public func toggleBoardPinned(id: CorkBoard.ID) -> Bool {
+        guard let board = boards.first(where: { $0.id == id }) else {
+            return false
+        }
+
+        return setBoardPinned(id: id, isPinned: !board.isPinned)
+    }
+
+    @discardableResult
+    public func moveBoard(id: CorkBoard.ID, toIndex: Int) -> Bool {
+        guard boards.indices.contains(toIndex),
+              let currentIndex = boards.firstIndex(where: { $0.id == id }),
+              currentIndex != toIndex
+        else {
+            return false
+        }
+
+        let board = boards.remove(at: currentIndex)
+        boards.insert(board, at: min(toIndex, boards.count))
+        normalizeBoardSortIndices()
+        scheduleAutosave()
+
+        return true
+    }
+
+    @discardableResult
+    public func duplicateBoard(id: CorkBoard.ID) -> CorkBoard? {
+        guard let boardIndex = boards.firstIndex(where: { $0.id == id }) else {
+            return nil
+        }
+
+        let now = Date()
+        let sourceBoard = boards[boardIndex]
+        let duplicatedItems = sourceBoard.items.map { item in
+            var item = item
+            item.id = UUID()
+            return item
+        }
+        let duplicatedBoard = CorkBoard(
+            name: "\(sourceBoard.name) Copy",
+            createdAt: now,
+            updatedAt: now,
+            isPinned: false,
+            sortIndex: boardIndex + 1,
+            items: duplicatedItems
+        )
+
+        boards.insert(duplicatedBoard, at: boardIndex + 1)
+        normalizeBoardSortIndices()
+        selectedBoardID = duplicatedBoard.id
+        selectedItemID = nil
+        scheduleAutosave()
+
+        return boards.first { $0.id == duplicatedBoard.id }
+    }
+
+    @discardableResult
     public func deleteBoard(id: CorkBoard.ID) -> Bool {
         guard boards.count > 1,
               let boardIndex = boards.firstIndex(where: { $0.id == id })
@@ -372,6 +446,7 @@ public final class BoardStore: ObservableObject {
 
         let wasSelectedBoard = boards[boardIndex].id == selectedBoardID
         boards.remove(at: boardIndex)
+        normalizeBoardSortIndices()
 
         if wasSelectedBoard {
             let fallbackIndex = min(boardIndex, boards.count - 1)
@@ -794,6 +869,16 @@ public final class BoardStore: ObservableObject {
 
     private func sanitizedPaletteColors(_ colors: [PaletteColor]) -> [PaletteColor] {
         colors.isEmpty ? Self.defaultPaletteColors : colors
+    }
+
+    private func nextBoardSortIndex() -> Int {
+        max((boards.map(\.sortIndex).max() ?? -1) + 1, boards.count)
+    }
+
+    private func normalizeBoardSortIndices() {
+        for index in boards.indices {
+            boards[index].sortIndex = index
+        }
     }
 
     private static let defaultPaletteColors = ColorPaletteCard.defaultColors
