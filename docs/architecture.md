@@ -70,17 +70,20 @@ The shell should remain thin. It should not directly encode board data, perform 
 
 ### Hot Keys
 
-Current file:
+Current files:
 
 - `Sources/Cork/HotKeys/GlobalHotKey.swift`
+- `Sources/Cork/HotKeys/HotKeyController.swift`
+- `Sources/Cork/HotKeys/HotKeyPresentation.swift`
+- `Sources/Cork/HotKeys/HotKeyRecorderView.swift`
 
-The first implementation uses Carbon event hot keys because they are still the practical native route for app-level global keyboard shortcuts on macOS.
+The implementation uses Carbon event hot keys because they are still the practical native route for app-level global keyboard shortcuts on macOS. `HotKeyController` observes `SettingsStore`, unregisters the previous shortcut, and registers the currently saved `HotKeyConfiguration`. Presentation helpers keep display names, menu-key equivalents, and recorder input mapping out of the app coordinator.
 
 Near-term considerations:
 
-- Detect registration failure and expose it in a small diagnostics path.
-- Move key binding configuration behind a `HotKeyConfiguration` value.
-- Later, add a settings UI for changing the shortcut.
+- Keep registration failures visible in Preferences without interrupting normal menu-bar use.
+- Preserve the menu bar command as a fallback whenever a shortcut is unavailable.
+- Add more key-name coverage only when manual testing shows a real shortcut display gap.
 
 ### Windowing
 
@@ -152,6 +155,9 @@ Current model:
 - `BoardRect`
 - `BoardPoint`
 - `BoardSize`
+- `AppSettings`
+- `HotKeyConfiguration`
+- `HotKeyModifier`
 
 The domain model should stay platform-light. It can use `Foundation` value types like `UUID`, `Date`, and `URL`, but should avoid `NSView`, `NSImage`, `SwiftUI.Image`, and persistence framework annotations unless there is a strong reason.
 
@@ -208,6 +214,7 @@ Current settings behavior:
 - Save board opacity.
 - Save the selected slide edge.
 - Save the user's launch-at-login preference.
+- Save the user's global keyboard shortcut.
 - Restore settings automatically on launch.
 - Fall back to strong defaults if no saved settings exist.
 - Debounce settings autosaves.
@@ -352,7 +359,7 @@ Use:
 
 - Quiet fallbacks for missing saved state.
 - Small non-blocking indicators for failed imports.
-- Menu diagnostics for hot-key registration problems.
+- Preferences diagnostics for hot-key registration problems.
 - Logged errors for unexpected persistence failures during development.
 
 As the app matures, user-visible recovery should be added for cases where data might not save.
@@ -370,6 +377,8 @@ Keep tests concentrated around behavior that should not regress:
 - Board creation, rename, and deletion commands.
 - Persistence round trips.
 - Import intent resolution.
+- App settings defaults, decoding, persistence, and update commands.
+- Keyboard shortcut validation and autosave behavior.
 - Large-image interaction behavior through manual QA.
 
 UI animation and AppKit panel behavior can remain manually verified early, then gain focused tests once packaging and UI structure settle.

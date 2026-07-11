@@ -1,6 +1,6 @@
 # Manual Testing Guide
 
-This guide covers the awkward macOS cases that are hard to prove with unit tests: full-screen Spaces, multiple desktops, menu bar behavior, global hot keys, display geometry, user-facing card creation flows, drag-and-drop imports, URL cards, and resizing/layout polish.
+This guide covers the awkward macOS cases that are hard to prove with unit tests: full-screen Spaces, multiple desktops, menu bar behavior, configurable global hot keys, display geometry, user-facing card creation flows, drag-and-drop imports, URL cards, and resizing/layout polish.
 
 Use the relevant sections before closing each milestone and whenever Cork's windowing, hot-key, menu bar, persistence, card creation, import, or card layout behavior changes.
 
@@ -475,7 +475,15 @@ Steps:
 8. After each edge change, hide Cork and show it again.
 9. Quit and relaunch Cork.
 10. Verify the selected opacity and slide edge restore after relaunch.
-11. Open Preferences and inspect the Launch at Login row.
+11. Open Preferences and click the keyboard shortcut recorder.
+12. Press a new shortcut with at least one modifier, such as `Control` + `Option` + `B`.
+13. Hide and show Cork with the new shortcut.
+14. Quit and relaunch Cork.
+15. Verify the new shortcut still works and the menu bar Show/Hide item displays the updated shortcut when possible.
+16. Reopen Preferences and click `Reset` next to the shortcut.
+17. Verify `Command` + `Option` + `B` works again.
+18. Click the recorder, press a bare letter key without modifiers, and verify Cork rejects it without changing the saved shortcut.
+19. Open Preferences and inspect the Launch at Login row.
 
 Expected:
 
@@ -484,6 +492,11 @@ Expected:
 - The board hides and reappears from the selected edge.
 - Top and bottom edges behave like a horizontal board.
 - Left and right edges slide horizontally from off-screen while keeping the board content usable.
+- Keyboard shortcut changes take effect without restarting Cork.
+- Keyboard shortcut changes persist after relaunch.
+- The reset button restores the default `Command` + `Option` + `B` shortcut.
+- Bare keys without modifiers are rejected.
+- The menu bar Show/Hide command remains available if the shortcut is changed, rejected, or unavailable.
 - In SwiftPM debug runs, Launch at Login is disabled with a packaged-app status message.
 
 Packaged-app follow-up:
@@ -500,6 +513,9 @@ Failure notes:
 - Whether the board appeared from the wrong edge.
 - Whether the board appeared off-screen or behind another Cork window.
 - Whether Preferences was hidden by the board.
+- Whether the shortcut recorder stayed in recording mode.
+- Whether an invalid shortcut replaced the previous working shortcut.
+- Whether the menu bar shortcut label became stale after changing Preferences.
 - Whether the Launch at Login row was enabled in an unexpected build type.
 
 ## Full-Screen App Spaces
@@ -628,7 +644,7 @@ Failure notes:
 
 ## Hot-Key Conflicts
 
-The current shortcut is `Command` + `Option` + `B`. Other apps may already use it.
+The default shortcut is `Command` + `Option` + `B`, and users can change it in Preferences. Other apps may already use either the default shortcut or a custom shortcut.
 
 Steps:
 
@@ -637,22 +653,25 @@ Steps:
 3. Press it in Safari.
 4. Press it in a full-screen app.
 5. Open the menu bar item and use "Show Cork" and "Hide Cork."
+6. Change the shortcut in Preferences to a different modifier combination.
+7. Repeat the Finder, Safari, and full-screen app checks with the new shortcut.
+8. Reset the shortcut to the default.
 
 Expected:
 
 - The shortcut toggles Cork in common apps.
 - Menu bar commands still work if the shortcut is unavailable.
 - If registration fails, Cork should not crash.
-
-Known Milestone 1 limitation:
-
-- Hot-key registration failure is currently logged with `NSLog`; there is no user-facing diagnostic yet.
+- Registration failures are shown in Preferences so the user has a visible fallback path.
+- Reset restores the default shortcut.
 
 Failure notes:
 
 - Which app had focus.
 - Whether the app consumed the shortcut.
 - Whether the menu bar fallback worked.
+- Whether Preferences displayed a registration failure message.
+- Whether resetting restored the default shortcut.
 - Any console message from Cork.
 
 ## Menu Bar Utility Behavior
@@ -750,6 +769,7 @@ Drag and drop imports:
 URL cards:
 Card resizing and layout polish:
 Preferences and system behavior:
+Keyboard shortcut preferences:
 Full-screen Spaces:
 Multiple desktops:
 Multiple monitors:

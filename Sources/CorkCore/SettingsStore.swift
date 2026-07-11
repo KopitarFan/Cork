@@ -58,6 +58,24 @@ public final class SettingsStore: ObservableObject {
         return true
     }
 
+    @discardableResult
+    public func updateHotKeyConfiguration(_ configuration: HotKeyConfiguration) -> Bool {
+        guard configuration.isValid else {
+            return false
+        }
+
+        let configuration = configuration.normalizedOrDefault
+
+        guard settings.hotKeyConfiguration != configuration else {
+            return false
+        }
+
+        settings.hotKeyConfiguration = configuration
+        scheduleAutosave()
+
+        return true
+    }
+
     public func flushPendingAutosave() {
         autosaveTask?.cancel()
         autosaveTask = nil

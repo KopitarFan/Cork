@@ -62,6 +62,35 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertFalse(didUpdate)
     }
 
+    func testUpdateHotKeyConfigurationChangesSettings() {
+        let store = SettingsStore()
+        let configuration = HotKeyConfiguration(keyCode: 8, modifiers: [.command, .shift])
+
+        let didUpdate = store.updateHotKeyConfiguration(configuration)
+
+        XCTAssertTrue(didUpdate)
+        XCTAssertEqual(store.settings.hotKeyConfiguration, configuration)
+    }
+
+    func testUpdateHotKeyConfigurationRejectsUnchangedValue() {
+        let configuration = HotKeyConfiguration(keyCode: 8, modifiers: [.command, .shift])
+        let store = SettingsStore(settings: AppSettings(hotKeyConfiguration: configuration))
+
+        let didUpdate = store.updateHotKeyConfiguration(configuration)
+
+        XCTAssertFalse(didUpdate)
+    }
+
+    func testUpdateHotKeyConfigurationRejectsInvalidValue() {
+        let store = SettingsStore()
+        let configuration = HotKeyConfiguration(keyCode: 8, modifiers: [])
+
+        let didUpdate = store.updateHotKeyConfiguration(configuration)
+
+        XCTAssertFalse(didUpdate)
+        XCTAssertEqual(store.settings.hotKeyConfiguration, AppSettings.defaultHotKeyConfiguration)
+    }
+
     func testUpdateBoardOpacityAutosavesWhenRepositoryIsConfigured() {
         let repository = CapturingSettingsRepository()
         let store = SettingsStore(
@@ -97,6 +126,19 @@ final class SettingsStoreTests: XCTestCase {
         store.updateBoardSlideEdge(.left)
 
         XCTAssertEqual(repository.savedSettings, [AppSettings(boardSlideEdge: .left)])
+    }
+
+    func testUpdateHotKeyConfigurationAutosavesWhenRepositoryIsConfigured() {
+        let repository = CapturingSettingsRepository()
+        let store = SettingsStore(
+            repository: repository,
+            autosaveDelay: 0
+        )
+        let configuration = HotKeyConfiguration(keyCode: 8, modifiers: [.command, .shift])
+
+        store.updateHotKeyConfiguration(configuration)
+
+        XCTAssertEqual(repository.savedSettings, [AppSettings(hotKeyConfiguration: configuration)])
     }
 
     func testFlushPendingAutosaveSavesImmediately() {
