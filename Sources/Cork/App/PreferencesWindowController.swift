@@ -8,16 +8,18 @@ final class PreferencesWindowController {
 
     init(
         settingsStore: SettingsStore,
-        launchAtLoginController: LaunchAtLoginController
+        launchAtLoginController: LaunchAtLoginController,
+        hotKeyController: HotKeyController
     ) {
         let hostingController = NSHostingController(
             rootView: PreferencesView(
                 settingsStore: settingsStore,
-                launchAtLoginController: launchAtLoginController
+                launchAtLoginController: launchAtLoginController,
+                hotKeyController: hotKeyController
             )
         )
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 340),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 430),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -44,6 +46,9 @@ final class PreferencesWindowController {
 private struct PreferencesView: View {
     @ObservedObject var settingsStore: SettingsStore
     @ObservedObject var launchAtLoginController: LaunchAtLoginController
+    @ObservedObject var hotKeyController: HotKeyController
+
+    @State private var hotKeyInputMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -111,6 +116,39 @@ private struct PreferencesView: View {
 
             Divider()
 
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Keyboard Shortcut", systemImage: "keyboard")
+
+                HStack {
+                    HotKeyRecorderView(
+                        configuration: settingsStore.settings.hotKeyConfiguration,
+                        onRecord: { configuration in
+                            hotKeyInputMessage = nil
+                            settingsStore.updateHotKeyConfiguration(configuration)
+                        },
+                        onReject: { message in
+                            hotKeyInputMessage = message
+                        }
+                    )
+                    .frame(width: 122, height: 28)
+
+                    Spacer()
+
+                    Button("Reset") {
+                        hotKeyInputMessage = nil
+                        settingsStore.updateHotKeyConfiguration(.default)
+                    }
+                }
+
+                if let hotKeyStatusMessage {
+                    Text(hotKeyStatusMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Divider()
+
             VStack(alignment: .leading, spacing: 6) {
                 Toggle(
                     isOn: Binding(
@@ -135,12 +173,16 @@ private struct PreferencesView: View {
             }
         }
         .padding(22)
-        .frame(minWidth: 440, minHeight: 340)
+        .frame(minWidth: 440, minHeight: 430)
     }
 
     private var opacityPercentage: String {
         let percentage = Int((settingsStore.settings.boardOpacity * 100).rounded())
         return "\(percentage)%"
+    }
+
+    private var hotKeyStatusMessage: String? {
+        hotKeyInputMessage ?? hotKeyController.statusMessage
     }
 
     private func title(for edge: BoardSlideEdge) -> String {

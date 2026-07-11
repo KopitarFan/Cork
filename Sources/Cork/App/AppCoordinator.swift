@@ -1,5 +1,4 @@
 import AppKit
-import Carbon.HIToolbox
 import CorkCore
 import Foundation
 
@@ -15,15 +14,20 @@ final class AppCoordinator: ObservableObject {
     private lazy var launchAtLoginController = LaunchAtLoginController(
         settingsStore: settingsStore
     )
+    private lazy var hotKeyController = HotKeyController(
+        settingsStore: settingsStore
+    ) { [weak self] in
+        self?.toggleBoard()
+    }
     private lazy var boardPanelController = BoardPanelController(
         boardStore: boardStore,
         settingsStore: settingsStore
     )
     private lazy var preferencesWindowController = PreferencesWindowController(
         settingsStore: settingsStore,
-        launchAtLoginController: launchAtLoginController
+        launchAtLoginController: launchAtLoginController,
+        hotKeyController: hotKeyController
     )
-    private var globalHotKey: GlobalHotKey?
     private var didStart = false
 
     private init() {
@@ -38,7 +42,7 @@ final class AppCoordinator: ObservableObject {
 
         didStart = true
         NSApp.setActivationPolicy(.accessory)
-        registerDefaultHotKey()
+        hotKeyController.start()
         launchAtLoginController.refresh()
     }
 
@@ -107,19 +111,4 @@ final class AppCoordinator: ObservableObject {
         }
     }
 
-    private func registerDefaultHotKey() {
-        let hotKey = GlobalHotKey(
-            keyCode: UInt32(kVK_ANSI_B),
-            modifiers: [.command, .option]
-        ) { [weak self] in
-            self?.toggleBoard()
-        }
-
-        do {
-            try hotKey.register()
-            globalHotKey = hotKey
-        } catch {
-            NSLog("Cork could not register the default hot key: \(error.localizedDescription)")
-        }
-    }
 }

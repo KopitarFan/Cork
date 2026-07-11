@@ -20,6 +20,12 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.boardSlideEdge, AppSettings.defaultBoardSlideEdge)
     }
 
+    func testSettingsUseDefaultHotKeyConfiguration() {
+        let settings = AppSettings()
+
+        XCTAssertEqual(settings.hotKeyConfiguration, AppSettings.defaultHotKeyConfiguration)
+    }
+
     func testSettingsClampBoardOpacity() {
         XCTAssertEqual(
             AppSettings(boardOpacity: AppSettings.minimumBoardOpacity - 0.2).boardOpacity,
@@ -39,6 +45,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.boardOpacity, AppSettings.defaultBoardOpacity)
         XCTAssertEqual(settings.launchAtLoginEnabled, AppSettings.defaultLaunchAtLoginEnabled)
         XCTAssertEqual(settings.boardSlideEdge, AppSettings.defaultBoardSlideEdge)
+        XCTAssertEqual(settings.hotKeyConfiguration, AppSettings.defaultHotKeyConfiguration)
     }
 
     func testSettingsPreservesDecodedLaunchAtLoginValue() throws {
@@ -63,6 +70,39 @@ final class AppSettingsTests: XCTestCase {
         let settings = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
 
         XCTAssertEqual(settings.boardSlideEdge, .left)
+    }
+
+    func testSettingsPreservesDecodedHotKeyConfiguration() throws {
+        let json = """
+        {
+            "hotKeyConfiguration": {
+                "keyCode": 2,
+                "modifiers": ["shift", "command"]
+            }
+        }
+        """
+
+        let settings = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
+
+        XCTAssertEqual(
+            settings.hotKeyConfiguration,
+            HotKeyConfiguration(keyCode: 2, modifiers: [.command, .shift])
+        )
+    }
+
+    func testSettingsDefaultHotKeyConfigurationWhenDecodedShortcutIsInvalid() throws {
+        let json = """
+        {
+            "hotKeyConfiguration": {
+                "keyCode": 2,
+                "modifiers": []
+            }
+        }
+        """
+
+        let settings = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
+
+        XCTAssertEqual(settings.hotKeyConfiguration, AppSettings.defaultHotKeyConfiguration)
     }
 
     func testSettingsClampDecodedBoardOpacity() throws {

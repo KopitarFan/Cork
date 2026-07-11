@@ -5,17 +5,16 @@ import SwiftUI
 struct MenuBarContent: View {
     @ObservedObject var coordinator: AppCoordinator
     @ObservedObject private var boardStore: BoardStore
+    @ObservedObject private var settingsStore: SettingsStore
 
     init(coordinator: AppCoordinator) {
         self.coordinator = coordinator
         self.boardStore = coordinator.boardStore
+        self.settingsStore = coordinator.settingsStore
     }
 
     var body: some View {
-        Button(coordinator.isBoardVisible ? "Hide Cork" : "Show Cork") {
-            coordinator.toggleBoard()
-        }
-        .keyboardShortcut("b", modifiers: [.command, .option])
+        toggleBoardButton
 
         Divider()
 
@@ -74,6 +73,22 @@ struct MenuBarContent: View {
             NSApp.terminate(nil)
         }
         .keyboardShortcut("q")
+    }
+
+    @ViewBuilder
+    private var toggleBoardButton: some View {
+        if let shortcut = HotKeyPresentation.menuShortcut(for: settingsStore.settings.hotKeyConfiguration) {
+            rawToggleBoardButton
+                .keyboardShortcut(shortcut.key, modifiers: shortcut.modifiers)
+        } else {
+            rawToggleBoardButton
+        }
+    }
+
+    private var rawToggleBoardButton: some View {
+        Button(coordinator.isBoardVisible ? "Hide Cork" : "Show Cork") {
+            coordinator.toggleBoard()
+        }
     }
 
     @ViewBuilder

@@ -24,7 +24,7 @@ Opening Cork should feel like pulling back a curtain, not launching an app.
 The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, drag-and-drop imports, resizing/layout polish, the core Milestone 7 card types, board-management polish, and the first preferences surface:
 
 - Menu bar app.
-- Global keyboard shortcut: `Command` + `Option` + `B`.
+- Configurable global keyboard shortcut, defaulting to `Command` + `Option` + `B`.
 - Configurable slide-in board edge.
 - Multiple named sample boards.
 - Text, checklist, image, URL, file, and color palette cards.
@@ -41,6 +41,7 @@ The project currently has the first runnable foundation, persistence layer, card
 - Preferences window opened from the menu bar.
 - Board opacity preference with live preview.
 - Slide edge preference for top, bottom, left, and right.
+- Keyboard shortcut preference with a lightweight native recorder and reset action.
 - Launch-at-login preference plumbing through `SMAppService`; the control is disabled in SwiftPM debug runs until Cork is packaged as a `.app`.
 - Drag-and-drop image imports from Finder.
 - Drag-and-drop plain text imports.
@@ -55,7 +56,7 @@ The project currently has the first runnable foundation, persistence layer, card
 - File-card context menu actions, including opening files and revealing them in Finder.
 - JSON-backed persistence in Application Support.
 - Autosave for board selection, board changes, card creation, card editing, card movement, card resizing, and card actions.
-- Autosave for app preferences.
+- Autosave for app preferences, including board opacity, slide edge, launch-at-login intent, and keyboard shortcut.
 - A separate `CorkCore` target for board and card models.
 - Unit tests for board selection, board management, card movement, card resizing, card creation, URL/file/palette card creation/editing/imports, Markdown text cards, board lifecycle commands, import resolution, app settings, snapshot encoding, JSON persistence, and autosave.
 
@@ -74,7 +75,7 @@ cd /Users/miguel/Projects/Cork
 swift run Cork
 ```
 
-Use `Command` + `Option` + `B` to show or hide the board. You can also use the Cork menu bar item.
+Use `Command` + `Option` + `B` to show or hide the board by default. You can change the shortcut in Preferences or use the Cork menu bar item.
 
 ## Test
 
@@ -122,7 +123,6 @@ The codebase is intentionally split so product logic can be tested without AppKi
 
 The next slice continues Milestone 9: preferences and system behavior.
 
-- Make the global shortcut configurable.
 - Verify launch at login in a packaged `.app` build.
 - Continue system-behavior polish around multi-monitor and active-application rules.
 - Keep rich URL previews, favicons, copied asset storage, and sandbox bookmarks as later follow-ups.

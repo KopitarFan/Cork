@@ -6,10 +6,8 @@ struct CorkApp: App {
     @StateObject private var coordinator = AppCoordinator.shared
 
     var body: some Scene {
-        MenuBarExtra {
+        MenuBarExtra("Cork", systemImage: "square.grid.2x2") {
             MenuBarContent(coordinator: coordinator)
-        } label: {
-            Label("Cork", systemImage: "rectangle.grid.2x2")
         }
         .menuBarExtraStyle(.menu)
     }

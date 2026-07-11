@@ -444,17 +444,30 @@ Completed so far:
 - Wired the board panel to show and hide from the selected slide edge.
 - Added launch-at-login preference plumbing through `SMAppService`.
 - Disabled the launch-at-login toggle in SwiftPM debug runs where Cork is not packaged as a `.app`.
-- Added settings tests for defaults, backward-compatible decoding, JSON persistence, store updates, autosave, and quit-time flush behavior.
+- Added `HotKeyConfiguration` and `HotKeyModifier` to model user-configurable global shortcuts.
+- Added `HotKeyController` to observe settings and re-register the active global shortcut.
+- Added a native shortcut recorder to Preferences with validation, status messaging, and reset-to-default behavior.
+- Updated the menu bar Show/Hide command to display the saved shortcut when it can be represented as a menu key equivalent.
+- Switched the menu bar extra to a reliable native grid symbol declaration.
+- Added settings tests for defaults, backward-compatible decoding, JSON persistence, store updates, shortcut validation, shortcut autosave, and quit-time flush behavior.
 
 Automated verification:
 
-- `swift test --quiet` passed with 156 tests and 0 failures.
+- `swift test --quiet` passed with 163 tests and 0 failures.
 - `swift build` passed.
 - `git diff --check` passed.
 
+Manual verification:
+
+- Preferences still opens above the board.
+- Keyboard shortcut changes persist across relaunch.
+- The default `Command` + `Option` + `B` shortcut can be restored.
+- Invalid bare-key shortcut input is rejected.
+- The menu bar Show/Hide command remains available as a fallback.
+- Existing saved boards remained intact after the shortcut-preferences changes; a blank board can simply mean the selected board has no cards.
+
 Remaining:
 
-- Make the global shortcut configurable.
 - Verify launch-at-login behavior in a packaged `.app` build.
 - Decide how much multi-monitor behavior belongs in this milestone versus packaging/release readiness.
 - Keep active-application show/hide rules as optional follow-up unless the settings architecture needs it now.

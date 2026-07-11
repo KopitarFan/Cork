@@ -26,7 +26,8 @@ final class JSONSettingsRepositoryTests: XCTestCase {
         let settings = AppSettings(
             boardOpacity: 0.72,
             launchAtLoginEnabled: true,
-            boardSlideEdge: .right
+            boardSlideEdge: .right,
+            hotKeyConfiguration: HotKeyConfiguration(keyCode: 8, modifiers: [.command, .shift])
         )
 
         try repository.saveSettings(settings)
