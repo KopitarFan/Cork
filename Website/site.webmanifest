@@ -1,0 +1,16 @@
+{
+  "name": "Cork for macOS",
+  "short_name": "Cork",
+  "description": "Your working context, one shortcut away.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#f5f7f2",
+  "theme_color": "#173c33",
+  "icons": [
+    {
+      "src": "/assets/cork-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
