@@ -8,6 +8,7 @@ public struct CorkBoard: Identifiable, Codable, Equatable, Sendable {
     public var isPinned: Bool
     public var sortIndex: Int
     public var items: [BoardItem]
+    public var connections: [BoardConnection]
 
     public init(
         id: UUID = UUID(),
@@ -16,7 +17,8 @@ public struct CorkBoard: Identifiable, Codable, Equatable, Sendable {
         updatedAt: Date = Date(),
         isPinned: Bool = false,
         sortIndex: Int = 0,
-        items: [BoardItem] = []
+        items: [BoardItem] = [],
+        connections: [BoardConnection] = []
     ) {
         self.id = id
         self.name = name
@@ -25,6 +27,7 @@ public struct CorkBoard: Identifiable, Codable, Equatable, Sendable {
         self.isPinned = isPinned
         self.sortIndex = sortIndex
         self.items = items
+        self.connections = connections
     }
 
     public init(from decoder: Decoder) throws {
@@ -37,6 +40,7 @@ public struct CorkBoard: Identifiable, Codable, Equatable, Sendable {
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         sortIndex = try container.decodeIfPresent(Int.self, forKey: .sortIndex) ?? 0
         items = try container.decode([BoardItem].self, forKey: .items)
+        connections = try container.decodeIfPresent([BoardConnection].self, forKey: .connections) ?? []
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -49,6 +53,7 @@ public struct CorkBoard: Identifiable, Codable, Equatable, Sendable {
         try container.encode(isPinned, forKey: .isPinned)
         try container.encode(sortIndex, forKey: .sortIndex)
         try container.encode(items, forKey: .items)
+        try container.encode(connections, forKey: .connections)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -59,6 +64,76 @@ public struct CorkBoard: Identifiable, Codable, Equatable, Sendable {
         case isPinned
         case sortIndex
         case items
+        case connections
+    }
+}
+
+public enum BoardConnectionStyle: String, Codable, CaseIterable, Equatable, Sendable {
+    case line
+    case string
+}
+
+public struct BoardConnection: Identifiable, Codable, Equatable, Sendable {
+    public var id: UUID
+    public var sourceItemID: BoardItem.ID
+    public var targetItemID: BoardItem.ID
+    public var style: BoardConnectionStyle
+
+    public init(
+        id: UUID = UUID(),
+        sourceItemID: BoardItem.ID,
+        targetItemID: BoardItem.ID,
+        style: BoardConnectionStyle
+    ) {
+        self.id = id
+        self.sourceItemID = sourceItemID
+        self.targetItemID = targetItemID
+        self.style = style
+    }
+
+    public func connects(_ firstItemID: BoardItem.ID, _ secondItemID: BoardItem.ID) -> Bool {
+        (sourceItemID == firstItemID && targetItemID == secondItemID) ||
+            (sourceItemID == secondItemID && targetItemID == firstItemID)
+    }
+
+    public func includes(_ itemID: BoardItem.ID) -> Bool {
+        sourceItemID == itemID || targetItemID == itemID
+    }
+}
+
+public enum CardFontDesign: String, Codable, CaseIterable, Equatable, Sendable {
+    case system
+    case rounded
+    case serif
+    case monospaced
+}
+
+public struct CardAppearance: Codable, Equatable, Sendable {
+    public static let `default` = CardAppearance()
+
+    public var backgroundHex: String?
+    public var fontDesign: CardFontDesign
+
+    public init(
+        backgroundHex: String? = nil,
+        fontDesign: CardFontDesign = .rounded
+    ) {
+        self.backgroundHex = backgroundHex.flatMap(AppColorHex.normalized)
+        self.fontDesign = fontDesign
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        self.init(
+            backgroundHex: try container.decodeIfPresent(String.self, forKey: .backgroundHex),
+            fontDesign: try container.decodeIfPresent(CardFontDesign.self, forKey: .fontDesign) ?? .rounded
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case backgroundHex
+        case fontDesign
     }
 }
 
@@ -66,11 +141,43 @@ public struct BoardItem: Identifiable, Codable, Equatable, Sendable {
     public var id: UUID
     public var frame: BoardRect
     public var content: BoardItemContent
+    public var appearance: CardAppearance
 
-    public init(id: UUID = UUID(), frame: BoardRect, content: BoardItemContent) {
+    public init(
+        id: UUID = UUID(),
+        frame: BoardRect,
+        content: BoardItemContent,
+        appearance: CardAppearance = .default
+    ) {
         self.id = id
         self.frame = frame
         self.content = content
+        self.appearance = appearance
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decode(UUID.self, forKey: .id)
+        frame = try container.decode(BoardRect.self, forKey: .frame)
+        content = try container.decode(BoardItemContent.self, forKey: .content)
+        appearance = try container.decodeIfPresent(CardAppearance.self, forKey: .appearance) ?? .default
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(id, forKey: .id)
+        try container.encode(frame, forKey: .frame)
+        try container.encode(content, forKey: .content)
+        try container.encode(appearance, forKey: .appearance)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case frame
+        case content
+        case appearance
     }
 }
 
@@ -168,10 +275,16 @@ public struct ChecklistEntry: Identifiable, Codable, Equatable, Sendable {
 public struct ImageCard: Codable, Equatable, Sendable {
     public var title: String
     public var source: ImageSource?
+    public var securityScopedBookmark: Data?
 
-    public init(title: String, source: ImageSource? = nil) {
+    public init(
+        title: String,
+        source: ImageSource? = nil,
+        securityScopedBookmark: Data? = nil
+    ) {
         self.title = title
         self.source = source
+        self.securityScopedBookmark = securityScopedBookmark
     }
 }
 
@@ -193,10 +306,16 @@ public struct URLCard: Codable, Equatable, Sendable {
 public struct FileCard: Codable, Equatable, Sendable {
     public var title: String
     public var url: URL
+    public var securityScopedBookmark: Data?
 
-    public init(title: String, url: URL) {
+    public init(
+        title: String,
+        url: URL,
+        securityScopedBookmark: Data? = nil
+    ) {
         self.title = title
         self.url = url
+        self.securityScopedBookmark = securityScopedBookmark
     }
 }
 

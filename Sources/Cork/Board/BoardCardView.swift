@@ -6,6 +6,8 @@ struct BoardCardView: View {
     let item: BoardItem
     let isSelected: Bool
     let isHovered: Bool
+    let isConnectionSource: Bool
+    @Environment(\.colorScheme) private var ambientColorScheme
 
     var body: some View {
         cardContent
@@ -23,6 +25,16 @@ struct BoardCardView: View {
                         .padding(1)
                 }
             }
+            .overlay {
+                if isConnectionSource {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(
+                            Color(red: 0.72, green: 0.08, blue: 0.10),
+                            style: StrokeStyle(lineWidth: 2, dash: [6, 4])
+                        )
+                        .padding(2)
+                }
+            }
             .overlay(alignment: .bottomTrailing) {
                 if isSelected {
                     ResizeHandle()
@@ -38,6 +50,8 @@ struct BoardCardView: View {
             .offset(x: item.frame.origin.x, y: item.frame.origin.y)
             .zIndex(isSelected ? 2 : 1)
             .allowsHitTesting(false)
+            .environment(\.cardFontDesign, fontDesign)
+            .environment(\.colorScheme, resolvedColorScheme)
     }
 
     @ViewBuilder
@@ -66,7 +80,7 @@ struct BoardCardView: View {
                                 .frame(width: 14)
 
                             Text(entry.title)
-                                .font(.system(.callout, design: .rounded))
+                                .font(fontDesign.font(.callout))
                                 .foregroundStyle(entry.isComplete ? .secondary : .primary)
                                 .strikethrough(entry.isComplete)
                                 .lineLimit(1)
@@ -94,13 +108,13 @@ struct BoardCardView: View {
                 CardTitle(title: card.title, systemImage: "link")
 
                 Text(card.url.host() ?? card.url.absoluteString)
-                    .font(.system(.callout, design: .rounded))
+                    .font(fontDesign.font(.callout))
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 Text(card.url.absoluteString)
-                    .font(.system(.caption, design: .rounded))
+                    .font(fontDesign.font(.caption))
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
                     .textSelection(.enabled)
@@ -132,7 +146,10 @@ struct BoardCardView: View {
 
             switch card.source {
             case .fileReference(let url):
-                FileImageThumbnailView(url: url)
+                FileImageThumbnailView(
+                    url: url,
+                    securityScopedBookmark: card.securityScopedBookmark
+                )
             case .bundledSymbol(let symbolName):
                 Image(systemName: symbolName)
                     .font(.system(size: 40, weight: .medium))
@@ -149,21 +166,67 @@ struct BoardCardView: View {
             .foregroundStyle(.secondary)
     }
 
-    private var cardBackground: some ShapeStyle {
+    private var cardBackground: AnyShapeStyle {
+        if let customBackgroundHex = item.appearance.backgroundHex {
+            return AnyShapeStyle(Color(cardHex: customBackgroundHex).opacity(0.96))
+        }
+
         switch item.content {
         case .text:
-            AnyShapeStyle(Color(nsColor: .textBackgroundColor).opacity(0.95))
+            return AnyShapeStyle(Color(nsColor: .textBackgroundColor).opacity(0.95))
         case .checklist:
-            AnyShapeStyle(Color(nsColor: .selectedContentBackgroundColor).opacity(0.14))
+            return AnyShapeStyle(Color(nsColor: .selectedContentBackgroundColor).opacity(0.14))
         case .image:
-            AnyShapeStyle(Color(nsColor: .underPageBackgroundColor).opacity(0.92))
+            return AnyShapeStyle(Color(nsColor: .underPageBackgroundColor).opacity(0.92))
         case .url:
-            AnyShapeStyle(Color(nsColor: .controlBackgroundColor).opacity(0.94))
+            return AnyShapeStyle(Color(nsColor: .controlBackgroundColor).opacity(0.94))
         case .file:
-            AnyShapeStyle(Color(nsColor: .windowBackgroundColor).opacity(0.94))
+            return AnyShapeStyle(Color(nsColor: .windowBackgroundColor).opacity(0.94))
         case .palette:
-            AnyShapeStyle(Color(nsColor: .textBackgroundColor).opacity(0.95))
+            return AnyShapeStyle(Color(nsColor: .textBackgroundColor).opacity(0.95))
         }
+    }
+
+    private var fontDesign: CardFontDesign {
+        item.appearance.fontDesign
+    }
+
+    private var resolvedColorScheme: ColorScheme {
+        item.appearance.backgroundHex?.preferredCardColorScheme ?? ambientColorScheme
+    }
+}
+
+private struct CardFontDesignEnvironmentKey: EnvironmentKey {
+    static let defaultValue = CardFontDesign.rounded
+}
+
+private extension EnvironmentValues {
+    var cardFontDesign: CardFontDesign {
+        get { self[CardFontDesignEnvironmentKey.self] }
+        set { self[CardFontDesignEnvironmentKey.self] = newValue }
+    }
+}
+
+private extension CardFontDesign {
+    var swiftUIFontDesign: Font.Design {
+        switch self {
+        case .system:
+            return .default
+        case .rounded:
+            return .rounded
+        case .serif:
+            return .serif
+        case .monospaced:
+            return .monospaced
+        }
+    }
+
+    func font(_ style: Font.TextStyle) -> Font {
+        .system(style, design: swiftUIFontDesign)
+    }
+
+    func font(size: CGFloat, weight: Font.Weight) -> Font {
+        .system(size: size, weight: weight, design: swiftUIFontDesign)
     }
 }
 
@@ -195,6 +258,7 @@ private struct ResizeHandle: View {
 
 private struct FileCardContent: View {
     let card: FileCard
+    @Environment(\.cardFontDesign) private var cardFontDesign
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -210,20 +274,20 @@ private struct FileCardContent: View {
                         .foregroundStyle(.orange)
 
                     Text("Missing file")
-                        .font(.system(.caption, design: .rounded))
+                        .font(cardFontDesign.font(.caption))
                         .fontWeight(.medium)
                         .foregroundStyle(.secondary)
                 }
             }
 
             Text(displayName)
-                .font(.system(.callout, design: .rounded))
+                .font(cardFontDesign.font(.callout))
                 .fontWeight(.medium)
                 .foregroundStyle(fileExists ? .primary : .secondary)
                 .lineLimit(1)
 
-            Text(card.url.path)
-                .font(.system(.caption, design: .rounded))
+            Text(resolvedURL.path)
+                .font(cardFontDesign.font(.caption))
                 .foregroundStyle(.secondary)
                 .lineLimit(fileExists ? 3 : 2)
                 .textSelection(.enabled)
@@ -232,7 +296,14 @@ private struct FileCardContent: View {
     }
 
     private var displayName: String {
-        card.url.lastPathComponent.isEmpty ? card.url.path : card.url.lastPathComponent
+        resolvedURL.lastPathComponent.isEmpty ? resolvedURL.path : resolvedURL.lastPathComponent
+    }
+
+    private var resolvedURL: URL {
+        SecurityScopedBookmark.resolve(
+            card.securityScopedBookmark,
+            fallbackURL: card.url
+        )
     }
 
     private var fileExists: Bool {
@@ -240,19 +311,25 @@ private struct FileCardContent: View {
             return true
         }
 
-        return FileManager.default.fileExists(atPath: card.url.path)
+        return SecurityScopedBookmark.withAccess(
+            to: card.securityScopedBookmark,
+            fallbackURL: card.url
+        ) { url in
+            FileManager.default.fileExists(atPath: url.path)
+        }
     }
 }
 
 private struct TextCardBody: View {
     let card: TextCard
+    @Environment(\.cardFontDesign) private var cardFontDesign
 
     @ViewBuilder
     var body: some View {
         switch card.format {
         case .plainText:
             Text(card.body)
-                .font(.system(.body, design: .rounded))
+                .font(cardFontDesign.font(.body))
                 .foregroundStyle(.primary)
                 .lineLimit(8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -264,6 +341,7 @@ private struct TextCardBody: View {
 
 private struct ColorPaletteCardContent: View {
     let card: ColorPaletteCard
+    @Environment(\.cardFontDesign) private var cardFontDesign
 
     private var visibleColors: ArraySlice<PaletteColor> {
         card.colors.prefix(8)
@@ -290,7 +368,7 @@ private struct ColorPaletteCardContent: View {
 
                 if remainingColorCount > 0 {
                     Text("+\(remainingColorCount)")
-                        .font(.system(.caption, design: .rounded))
+                        .font(cardFontDesign.font(.caption))
                         .fontWeight(.semibold)
                         .foregroundStyle(.secondary)
                         .frame(width: 28, height: 38)
@@ -321,6 +399,7 @@ private struct ColorPaletteCardContent: View {
 
 private struct MarkdownCardBody: View {
     let blocks: [MarkdownCardBlock]
+    @Environment(\.cardFontDesign) private var cardFontDesign
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -344,18 +423,18 @@ private struct MarkdownCardBody: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         case .paragraph(let text):
             inlineText(text)
-                .font(.system(.body, design: .rounded))
+                .font(cardFontDesign.font(.body))
                 .foregroundStyle(.primary)
                 .lineLimit(3)
                 .frame(maxWidth: .infinity, alignment: .leading)
         case .bullet(let text):
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("•")
-                    .font(.system(.callout, design: .rounded))
+                    .font(cardFontDesign.font(.callout))
                     .foregroundStyle(.secondary)
 
                 inlineText(text)
-                    .font(.system(.body, design: .rounded))
+                    .font(cardFontDesign.font(.body))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
             }
@@ -363,12 +442,12 @@ private struct MarkdownCardBody: View {
         case .orderedList(let marker, let text):
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(marker)
-                    .font(.system(.caption, design: .rounded))
+                    .font(cardFontDesign.font(.caption))
                     .foregroundStyle(.secondary)
                     .frame(minWidth: 16, alignment: .trailing)
 
                 inlineText(text)
-                    .font(.system(.body, design: .rounded))
+                    .font(cardFontDesign.font(.body))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
             }
@@ -393,11 +472,11 @@ private struct MarkdownCardBody: View {
     private func headingFont(for level: Int) -> Font {
         switch level {
         case 1:
-            return .system(.title3, design: .rounded)
+            return cardFontDesign.font(.title3)
         case 2:
-            return .system(.headline, design: .rounded)
+            return cardFontDesign.font(.headline)
         default:
-            return .system(.subheadline, design: .rounded)
+            return cardFontDesign.font(.subheadline)
         }
     }
 }
@@ -530,11 +609,12 @@ private struct MarkdownCardBlock: Identifiable {
 private struct CardTitle: View {
     let title: String
     let systemImage: String
+    @Environment(\.cardFontDesign) private var cardFontDesign
 
     var body: some View {
         HStack(spacing: 7) {
             Image(systemName: systemImage)
-                .font(.system(size: 12, weight: .semibold))
+                .font(cardFontDesign.font(size: 12, weight: .semibold))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(Color.accentColor)
                 .frame(width: 22, height: 22)
@@ -544,10 +624,42 @@ private struct CardTitle: View {
                 }
 
             Text(title)
-                .font(.system(.subheadline, design: .rounded))
+                .font(cardFontDesign.font(.subheadline))
                 .fontWeight(.semibold)
                 .lineLimit(1)
         }
+    }
+}
+
+private extension Color {
+    init(cardHex hex: String) {
+        let hexValue = String(hex.dropFirst())
+        guard let rgbValue = UInt64(hexValue, radix: 16) else {
+            self = Color(nsColor: .textBackgroundColor)
+            return
+        }
+
+        self.init(
+            red: Double((rgbValue >> 16) & 0xFF) / 255,
+            green: Double((rgbValue >> 8) & 0xFF) / 255,
+            blue: Double(rgbValue & 0xFF) / 255
+        )
+    }
+}
+
+private extension String {
+    var preferredCardColorScheme: ColorScheme? {
+        let hexValue = String(dropFirst())
+        guard let rgbValue = UInt64(hexValue, radix: 16) else {
+            return nil
+        }
+
+        let red = Double((rgbValue >> 16) & 0xFF) / 255
+        let green = Double((rgbValue >> 8) & 0xFF) / 255
+        let blue = Double(rgbValue & 0xFF) / 255
+        let luminance = (red * 0.299) + (green * 0.587) + (blue * 0.114)
+
+        return luminance > 0.55 ? .light : .dark
     }
 }
 

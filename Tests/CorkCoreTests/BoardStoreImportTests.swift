@@ -7,10 +7,12 @@ final class BoardStoreImportTests: XCTestCase {
         let board = CorkBoard(name: "Board")
         let store = BoardStore(boards: [board])
         let url = URL(fileURLWithPath: "/tmp/reference.png")
+        let bookmark = Data([0x01, 0x02])
 
         let items = store.importItems(
             [.imageFile(url: url, title: "Reference")],
-            at: BoardPoint(x: 140, y: 180)
+            at: BoardPoint(x: 140, y: 180),
+            securityScopedBookmarks: [url: bookmark]
         )
 
         XCTAssertEqual(items.count, 1)
@@ -25,6 +27,7 @@ final class BoardStoreImportTests: XCTestCase {
 
         XCTAssertEqual(card.title, "Reference")
         XCTAssertEqual(card.source, .fileReference(url))
+        XCTAssertEqual(card.securityScopedBookmark, bookmark)
     }
 
     func testImportMultipleImageFilesStaggersCardsFromDropLocation() {
@@ -135,10 +138,12 @@ final class BoardStoreImportTests: XCTestCase {
         let board = CorkBoard(name: "Board")
         let store = BoardStore(boards: [board])
         let url = URL(fileURLWithPath: "/tmp/reference.pdf")
+        let bookmark = Data([0x03, 0x04])
 
         let items = store.importItems(
             [.fileReference(url: url, title: "reference")],
-            at: BoardPoint(x: 72, y: 96)
+            at: BoardPoint(x: 72, y: 96),
+            securityScopedBookmarks: [url: bookmark]
         )
 
         XCTAssertEqual(items.count, 1)
@@ -151,6 +156,7 @@ final class BoardStoreImportTests: XCTestCase {
 
         XCTAssertEqual(card.title, "reference")
         XCTAssertEqual(card.url, url)
+        XCTAssertEqual(card.securityScopedBookmark, bookmark)
     }
 
     func testImportImageFileClampsToCanvasBounds() {

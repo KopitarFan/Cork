@@ -21,7 +21,7 @@ Opening Cork should feel like pulling back a curtain, not launching an app.
 
 ## Current Status
 
-The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, drag-and-drop imports, resizing/layout polish, the core Milestone 7 card types, board-management polish, and the first preferences surface:
+The project currently has the first runnable foundation, persistence layer, card interaction layer, real card creation flow, drag-and-drop imports, resizing/layout polish, the core Milestone 7 card types, board-management polish, board UI polish, and the first preferences surface:
 
 - Menu bar app.
 - Configurable global keyboard shortcut, defaulting to `Command` + `Option` + `B`.
@@ -32,21 +32,36 @@ The project currently has the first runnable foundation, persistence layer, card
 - Card creation from the board header and menu bar.
 - Lightweight editing for text notes, Markdown notes, checklist items, image card titles, URL cards, and color palettes.
 - Local image card creation through the native file picker.
+- Image replacement that preserves the card's title, layout, appearance, and connections.
 - Draggable card positions.
+- Hover labels that reveal each card's full name without opening it.
 - Selected-card state with keyboard movement.
 - Duplicate, delete, and edit actions for cards.
-- Context menus for card actions, including double-click edit.
+- Selected-card action menu in both the menu bar and board title bar.
+- Context menus for card actions, including double-click edit and an image-card chooser for renaming or replacing the image.
+- Per-card background color and font choices, available from card context menus and both Selected Card menus.
+- Persisted card-to-card connections with straight-line and red-string styles, plus a selected title-bar String tool for drawing directly between cards.
 - Board creation, rename, deletion, duplicate, pin/unpin, ordering, and menu-bar board switching.
+- Built-in Agile Sprint, Kanban, Vision Board, Weekly Schedule, Random Arrangement, Project Hub, Writing Room, and SWOT Analysis board templates.
+- On-board title-bar switcher for changing boards without leaving the board surface.
+- Quick next/previous board switching with `Control` + `Tab` and `Control` + `Shift` + `Tab` while Cork is active.
+- Mirrored Add Card, Selected Card, Boards, and Settings controls in the menu bar and board title bar.
 - Pinned boards appear first in the `Boards` menu.
-- Preferences window opened from the menu bar.
-- Board opacity preference with live preview.
+- Preferences window opened from the menu bar or the board title bar.
+- A one-time Quick Start guide for fresh installs, reopenable from both Settings surfaces.
+- Board surface opacity preference with live preview.
+- Card opacity preference for items on the board.
+- Board theme preference with Cork, Poster, and System views.
+- Optional custom title-bar and board-surface colors with native color wells.
+- Board size preference with Compact, Standard, and Large modes for easier drag-and-drop staging.
 - Slide edge preference for top, bottom, left, and right.
 - Keyboard shortcut preference with a lightweight native recorder and reset action.
-- Launch-at-login preference plumbing through `SMAppService`; the control is disabled in SwiftPM debug runs until Cork is packaged as a `.app`.
+- Launch-at-login preference through `SMAppService`, including system approval guidance in packaged builds.
 - Drag-and-drop image imports from Finder.
 - Drag-and-drop plain text imports.
 - Drag-and-drop URL imports as dedicated URL cards.
 - Drag-and-drop file imports as dedicated file cards.
+- Durable read-only security-scoped bookmarks for imported images and files in sandboxed builds.
 - Resizable cards with a selected-card bottom-right handle.
 - Minimum and maximum card sizes.
 - Edge-aware movement and resizing bounds.
@@ -54,17 +69,19 @@ The project currently has the first runnable foundation, persistence layer, card
 - Downsampled cached thumbnails for large local image cards.
 - URL-card context menu actions, including opening links in the default browser.
 - File-card context menu actions, including opening files and revealing them in Finder.
+- Normal window stacking so other app windows can come forward when clicked, with the global shortcut and menu bar command bringing Cork back to the front.
 - JSON-backed persistence in Application Support.
-- Autosave for board selection, board changes, card creation, card editing, card movement, card resizing, and card actions.
-- Autosave for app preferences, including board opacity, slide edge, launch-at-login intent, and keyboard shortcut.
+- Autosave for board selection, board changes, template creation, card creation, card editing, image replacement, per-card appearance, card connections, card movement, card resizing, and card actions.
+- Autosave for app preferences, including board surface opacity, card opacity, theme, custom board colors, size, slide edge, launch-at-login intent, keyboard shortcut, and Quick Start completion.
 - A separate `CorkCore` target for board and card models.
-- Unit tests for board selection, board management, card movement, card resizing, card creation, URL/file/palette card creation/editing/imports, Markdown text cards, board lifecycle commands, import resolution, app settings, snapshot encoding, JSON persistence, and autosave.
+- Unit tests for board selection, board cycling, board management, board templates, per-card appearance, card connections, card movement, card resizing, card creation, URL/file/palette card creation/editing/imports, Markdown text cards, board lifecycle commands, import resolution, app settings, preference updates, snapshot encoding, JSON persistence, and autosave.
+- A native Xcode app target with App Store metadata, sandbox entitlements, privacy manifest, release configuration, and complete macOS icon assets.
 
 Not implemented yet:
 
 - Copied asset storage for imported files and remote images.
 - Rich URL previews and favicons.
-- Packaged `.app` release workflow.
+- Final App Store Connect listing, screenshots, validation, and submission.
 
 ## Run
 
@@ -75,7 +92,9 @@ cd /Users/miguel/Projects/Cork
 swift run Cork
 ```
 
-Use `Command` + `Option` + `B` to show or hide the board by default. You can change the shortcut in Preferences or use the Cork menu bar item.
+Use `Command` + `Option` + `B` to show the board by default. If Cork is visible but behind another window, the shortcut brings it back to the front; press it again while Cork is frontmost to hide it. You can change the shortcut in Preferences or use the Cork menu bar item.
+
+For a packaged build, open `Cork.xcodeproj`, select the shared `Cork App` scheme, choose `My Mac`, and run. This path compiles the icon, privacy manifest, sandbox entitlements, and Launch at Login support into `Cork.app`.
 
 ## Test
 
@@ -101,7 +120,14 @@ Sources/
   CorkCore/     Board, card, and layout domain model
 Tests/
   CorkCoreTests/
+Packaging/
+  AppIcon/             Unmasked 1024px source artwork
+  Assets.xcassets/     Complete macOS AppIcon set
+  Info.plist           Bundle and App Store metadata
+  Cork.entitlements    App Sandbox capabilities
+  PrivacyInfo.xcprivacy
 docs/
+  app-store-release.md
   architecture.md
   manual-testing.md
   milestones.md
@@ -121,10 +147,10 @@ The codebase is intentionally split so product logic can be tested without AppKi
 
 ## Next Development Slice
 
-The next slice continues Milestone 9: preferences and system behavior.
+Iteration 11 packaging is active. Team-signed Debug builds and a signed universal Release archive are working; the next release slice is packaged-app QA and storefront preparation.
 
-- Verify launch at login in a packaged `.app` build.
-- Continue system-behavior polish around multi-monitor and active-application rules.
-- Keep rich URL previews, favicons, copied asset storage, and sandbox bookmarks as later follow-ups.
+- Run the packaged-app checklist, including file/image relaunch persistence, the global shortcut, and Launch at Login.
+- Prepare the privacy policy, support URL, listing copy, and screenshots.
+- Validate and upload the signed archive through Xcode Organizer.
 
-See [docs/milestones.md](docs/milestones.md) for the broader build path.
+See [docs/app-store-release.md](docs/app-store-release.md) for the release workflow and [docs/milestones.md](docs/milestones.md) for the broader build path.

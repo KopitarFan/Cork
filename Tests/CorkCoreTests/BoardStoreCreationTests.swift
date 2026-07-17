@@ -90,10 +90,12 @@ final class BoardStoreCreationTests: XCTestCase {
         let board = CorkBoard(name: "Board")
         let store = BoardStore(boards: [board])
         let source = ImageSource.bundledSymbol("photo")
+        let bookmark = Data([0x01, 0x02, 0x03])
 
         let item = store.createImageCard(
             title: "  Reference  ",
             source: source,
+            securityScopedBookmark: bookmark,
             at: BoardPoint(x: 110, y: 140)
         )
 
@@ -108,6 +110,7 @@ final class BoardStoreCreationTests: XCTestCase {
 
         XCTAssertEqual(card.title, "Reference")
         XCTAssertEqual(card.source, source)
+        XCTAssertEqual(card.securityScopedBookmark, bookmark)
     }
 
     func testCreateURLCardAddsSelectedURLItem() {
@@ -190,10 +193,12 @@ final class BoardStoreCreationTests: XCTestCase {
         let board = CorkBoard(name: "Board")
         let store = BoardStore(boards: [board])
         let url = URL(fileURLWithPath: "/tmp/reference.pdf")
+        let bookmark = Data([0x04, 0x05, 0x06])
 
         let item = store.createFileCard(
             title: "  Reference  ",
             url: url,
+            securityScopedBookmark: bookmark,
             at: BoardPoint(x: 130, y: 160)
         )
 
@@ -208,6 +213,7 @@ final class BoardStoreCreationTests: XCTestCase {
 
         XCTAssertEqual(card.title, "Reference")
         XCTAssertEqual(card.url, url)
+        XCTAssertEqual(card.securityScopedBookmark, bookmark)
     }
 
     func testCreateFileCardUsesFilenameFallbackTitle() {
@@ -473,7 +479,11 @@ final class BoardStoreCreationTests: XCTestCase {
                 origin: BoardPoint(x: 10, y: 10),
                 size: BoardSize(width: 120, height: 120)
             ),
-            content: .image(ImageCard(title: "Old", source: .bundledSymbol("photo")))
+            content: .image(ImageCard(
+                title: "Old",
+                source: .bundledSymbol("photo"),
+                securityScopedBookmark: Data([0x01])
+            ))
         )
         let board = CorkBoard(name: "Board", items: [item])
         let store = BoardStore(boards: [board])
@@ -489,6 +499,41 @@ final class BoardStoreCreationTests: XCTestCase {
 
         XCTAssertEqual(card.title, "New")
         XCTAssertEqual(card.source, source)
+        XCTAssertEqual(card.securityScopedBookmark, Data([0x01]))
+    }
+
+    func testUpdateImageCardCanReplaceSecurityScopedBookmark() {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: BoardPoint(x: 10, y: 10),
+                size: BoardSize(width: 120, height: 120)
+            ),
+            content: .image(ImageCard(
+                title: "Old",
+                source: .fileReference(URL(fileURLWithPath: "/tmp/old.png")),
+                securityScopedBookmark: Data([0x01])
+            ))
+        )
+        let board = CorkBoard(name: "Board", items: [item])
+        let store = BoardStore(boards: [board])
+        let source = ImageSource.fileReference(URL(fileURLWithPath: "/tmp/new.png"))
+        let bookmark = Data([0x02])
+
+        let didUpdate = store.updateImageCard(
+            item.id,
+            title: "New",
+            source: source,
+            securityScopedBookmark: bookmark
+        )
+
+        XCTAssertTrue(didUpdate)
+
+        guard case .image(let card) = store.selectedBoard.items[0].content else {
+            return XCTFail("Expected an image card.")
+        }
+
+        XCTAssertEqual(card.source, source)
+        XCTAssertEqual(card.securityScopedBookmark, bookmark)
     }
 
     func testUpdateURLCardChangesURLContentAndSelectsItem() {

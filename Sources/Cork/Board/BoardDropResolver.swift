@@ -14,6 +14,32 @@ struct BoardDropResolver {
         importResolver.intents(from: importSources(from: pasteboard))
     }
 
+    func securityScopedBookmarks(for intents: [BoardImportIntent]) -> [URL: Data] {
+        var bookmarks: [URL: Data] = [:]
+
+        for intent in intents {
+            let fileURL: URL?
+
+            switch intent {
+            case .imageFile(let url, _), .fileReference(let url, _):
+                fileURL = url
+            case .plainText, .webURL:
+                fileURL = nil
+            }
+
+            guard let fileURL,
+                  bookmarks[fileURL] == nil,
+                  let bookmark = SecurityScopedBookmark.create(for: fileURL)
+            else {
+                continue
+            }
+
+            bookmarks[fileURL] = bookmark
+        }
+
+        return bookmarks
+    }
+
     private func importSources(from pasteboard: NSPasteboard) -> [BoardImportSource] {
         fileURLs(from: pasteboard).map(BoardImportSource.fileURL) +
             webURLs(from: pasteboard).map(BoardImportSource.webURL) +

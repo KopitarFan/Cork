@@ -35,6 +35,20 @@ public final class SettingsStore: ObservableObject {
     }
 
     @discardableResult
+    public func updateCardOpacity(_ value: Double) -> Bool {
+        let cardOpacity = AppSettings.clampedCardOpacity(value)
+
+        guard settings.cardOpacity != cardOpacity else {
+            return false
+        }
+
+        settings.cardOpacity = cardOpacity
+        scheduleAutosave()
+
+        return true
+    }
+
+    @discardableResult
     public func updateLaunchAtLoginEnabled(_ isEnabled: Bool) -> Bool {
         guard settings.launchAtLoginEnabled != isEnabled else {
             return false
@@ -59,6 +73,64 @@ public final class SettingsStore: ObservableObject {
     }
 
     @discardableResult
+    public func updateBoardTheme(_ theme: BoardTheme) -> Bool {
+        guard settings.boardTheme != theme else {
+            return false
+        }
+
+        settings.boardTheme = theme
+        scheduleAutosave()
+
+        return true
+    }
+
+    @discardableResult
+    public func updateBoardDisplayMode(_ displayMode: BoardDisplayMode) -> Bool {
+        guard settings.boardDisplayMode != displayMode else {
+            return false
+        }
+
+        settings.boardDisplayMode = displayMode
+        scheduleAutosave()
+
+        return true
+    }
+
+    @discardableResult
+    public func updateCustomBoardColorsEnabled(_ isEnabled: Bool) -> Bool {
+        guard settings.customBoardColorsEnabled != isEnabled else {
+            return false
+        }
+
+        settings.customBoardColorsEnabled = isEnabled
+        scheduleAutosave()
+
+        return true
+    }
+
+    @discardableResult
+    public func updateCustomBoardColors(_ colors: BoardSurfaceColors) -> Bool {
+        guard settings.customBoardColors != colors else {
+            return false
+        }
+
+        settings.customBoardColors = colors
+        scheduleAutosave()
+
+        return true
+    }
+
+    @discardableResult
+    public func updateCustomBoardTitleBarColor(_ hex: String) -> Bool {
+        updateCustomBoardColors(settings.customBoardColors.withStartHex(hex))
+    }
+
+    @discardableResult
+    public func updateCustomBoardSurfaceColor(_ hex: String) -> Bool {
+        updateCustomBoardColors(settings.customBoardColors.withEndHex(hex))
+    }
+
+    @discardableResult
     public func updateHotKeyConfiguration(_ configuration: HotKeyConfiguration) -> Bool {
         guard configuration.isValid else {
             return false
@@ -71,6 +143,18 @@ public final class SettingsStore: ObservableObject {
         }
 
         settings.hotKeyConfiguration = configuration
+        scheduleAutosave()
+
+        return true
+    }
+
+    @discardableResult
+    public func markQuickStartGuideSeen() -> Bool {
+        guard !settings.hasSeenQuickStartGuide else {
+            return false
+        }
+
+        settings.hasSeenQuickStartGuide = true
         scheduleAutosave()
 
         return true

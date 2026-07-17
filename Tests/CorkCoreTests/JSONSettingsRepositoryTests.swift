@@ -25,9 +25,15 @@ final class JSONSettingsRepositoryTests: XCTestCase {
         let repository = JSONSettingsRepository(fileURL: fileURL)
         let settings = AppSettings(
             boardOpacity: 0.72,
+            cardOpacity: 0.64,
             launchAtLoginEnabled: true,
             boardSlideEdge: .right,
-            hotKeyConfiguration: HotKeyConfiguration(keyCode: 8, modifiers: [.command, .shift])
+            hotKeyConfiguration: HotKeyConfiguration(keyCode: 8, modifiers: [.command, .shift]),
+            boardTheme: .posterBoard,
+            boardDisplayMode: .compact,
+            customBoardColorsEnabled: true,
+            customBoardColors: BoardSurfaceColors(startHex: "#1F6FEB", endHex: "#FF7B72"),
+            hasSeenQuickStartGuide: true
         )
 
         try repository.saveSettings(settings)

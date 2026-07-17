@@ -14,6 +14,43 @@ final class BoardStoreBoardManagementTests: XCTestCase {
         XCTAssertEqual(store.boards.map(\.sortIndex), [0, 1, 2])
     }
 
+    func testSelectNextBoardWrapsAndClearsSelection() {
+        let item = BoardItem(
+            frame: BoardRect(
+                origin: BoardPoint(x: 20, y: 30),
+                size: BoardSize(width: 220, height: 160)
+            ),
+            content: .text(TextCard(title: "Note", body: "Body"))
+        )
+        let first = CorkBoard(name: "First")
+        let second = CorkBoard(name: "Second", items: [item])
+        let store = BoardStore(boards: [first, second], selectedBoardID: second.id)
+        store.selectItem(item.id)
+
+        XCTAssertTrue(store.selectNextBoard())
+        XCTAssertEqual(store.selectedBoardID, first.id)
+        XCTAssertNil(store.selectedItemID)
+    }
+
+    func testSelectPreviousBoardWraps() {
+        let first = CorkBoard(name: "First")
+        let second = CorkBoard(name: "Second")
+        let third = CorkBoard(name: "Third")
+        let store = BoardStore(boards: [first, second, third], selectedBoardID: first.id)
+
+        XCTAssertTrue(store.selectPreviousBoard())
+        XCTAssertEqual(store.selectedBoardID, third.id)
+    }
+
+    func testAdjacentBoardSelectionRequiresMultipleBoards() {
+        let board = CorkBoard(name: "Only")
+        let store = BoardStore(boards: [board])
+
+        XCTAssertFalse(store.selectNextBoard())
+        XCTAssertFalse(store.selectPreviousBoard())
+        XCTAssertEqual(store.selectedBoardID, board.id)
+    }
+
     func testSetBoardPinnedUpdatesPinnedStateAndAutosaves() {
         let board = CorkBoard(name: "Board")
         let repository = CapturingBoardManagementRepository()
