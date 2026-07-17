@@ -421,7 +421,8 @@ Scope:
 
 - Configure global shortcut.
 - Configure slide edge.
-- Configure board opacity.
+- Configure board surface opacity.
+- Configure card opacity.
 - Configure launch at login.
 - Add multi-monitor behavior.
 - Add optional active-application show/hide rules.
@@ -439,21 +440,51 @@ Completed so far:
 - Store settings in `~/Library/Application Support/Cork/settings.json`.
 - Added a native Preferences window opened from the menu bar.
 - Fixed Preferences window ordering so it opens above the board.
-- Added a board opacity preference with live board preview.
+- Added a board surface opacity preference with live board preview.
+- Added a separate card opacity preference for items on the board.
 - Added a slide-edge preference with `Top`, `Bottom`, `Left`, and `Right` options.
 - Wired the board panel to show and hide from the selected slide edge.
 - Added launch-at-login preference plumbing through `SMAppService`.
 - Disabled the launch-at-login toggle in SwiftPM debug runs where Cork is not packaged as a `.app`.
+- Restored Launch at Login in the packaged app target, synchronized the preference with the system service state, and added approval guidance plus a direct Login Items settings button.
 - Added `HotKeyConfiguration` and `HotKeyModifier` to model user-configurable global shortcuts.
 - Added `HotKeyController` to observe settings and re-register the active global shortcut.
 - Added a native shortcut recorder to Preferences with validation, status messaging, and reset-to-default behavior.
 - Updated the menu bar Show/Hide command to display the saved shortcut when it can be represented as a menu key equivalent.
 - Switched the menu bar extra to a reliable native grid symbol declaration.
-- Added settings tests for defaults, backward-compatible decoding, JSON persistence, store updates, shortcut validation, shortcut autosave, and quit-time flush behavior.
+- Added an on-board title-bar switcher for changing boards from the board surface.
+- Added a selected-card action menu to both the menu bar and board title bar.
+- Mirrored Add Card, Selected Card, Boards, and Settings command surfaces across the menu bar and board title bar.
+- Reorganized the board title-bar controls into labeled `Add`, `String`, `Card`, `Board`, and `Settings` groups.
+- Added `BoardTheme` with Cork, Poster, and System board surfaces.
+- Made the Cork board surface the default theme.
+- Added persisted per-card appearance controls for an optional background color and font design.
+- Added card appearance commands to the card context menu and both Selected Card menus.
+- Added built-in Agile Sprint, Kanban, Vision Board, Weekly Schedule, Random Arrangement, Project Hub, Writing Room, and SWOT Analysis templates.
+- Added template creation to the menu bar and board title-bar Board menus.
+- Added image replacement from the card context menu and both Selected Card menus while preserving card metadata.
+- Added an image-card double-click chooser for renaming the card or replacing its image.
+- Added `Control` + `Tab` and `Control` + `Shift` + `Tab` board cycling with wraparound and mirrored Board menu commands.
+- Added persisted card connections with straight-line and curved red-string rendering.
+- Added a two-step source/target connection workflow, visible source-card state, style switching, cancellation, and per-card connection removal.
+- Added a selected `String` title-bar tool with crosshair mode, live string preview, direct card-to-card dragging, repeat drawing, and Escape cancellation.
+- Added automatic connection cleanup when cards are deleted and endpoint remapping when boards are duplicated.
+- Added optional custom title-bar and board-surface colors with independent native color wells, swap, and reset actions.
+- Added `BoardDisplayMode` with Compact, Standard, and Large panel sizes.
+- Wired display-mode changes into live board-panel geometry updates.
+- Added Preferences controls for board theme and board size.
+- Changed the board panel to normal window stacking so other app windows can come forward when clicked.
+- Updated the global shortcut and menu-bar toggle to bring Cork forward when it is visible but behind another window.
+- Added compact hover labels that reveal card names while preserving drag, resize, and connection hit testing.
+- Added a native Quick Start window with the current shortcut, import guidance, board basics, and direct Show Cork and Preferences actions.
+- Added one-time first-run presentation backed by persisted settings, with reopen commands in both the menu bar and board Settings menu.
+- Added settings tests for defaults, backward-compatible decoding, JSON persistence, store updates, surface opacity, card opacity, theme updates, custom board colors, display-mode updates, Quick Start state, shortcut validation, shortcut autosave, and quit-time flush behavior.
+- Added tests for per-card appearance defaults, normalization, backward-compatible decoding, duplication, autosave, template metadata, template contents, fresh card IDs, and template-based board creation.
+- Added tests for board cycling, connection persistence, backward-compatible decoding, validation, style updates, autosave, removal, card deletion cleanup, and duplicate-board endpoint remapping.
 
 Automated verification:
 
-- `swift test --quiet` passed with 163 tests and 0 failures.
+- `swift test --quiet` passed with 228 tests and 0 failures.
 - `swift build` passed.
 - `git diff --check` passed.
 
@@ -464,7 +495,27 @@ Manual verification:
 - The default `Command` + `Option` + `B` shortcut can be restored.
 - Invalid bare-key shortcut input is rejected.
 - The menu bar Show/Hide command remains available as a fallback.
+- The menu bar command and global shortcut can bring Cork back to the front when it is visible behind another window.
 - Existing saved boards remained intact after the shortcut-preferences changes; a blank board can simply mean the selected board has no cards.
+
+Manual verification needed for current branch:
+
+- Board title-bar switcher lists and changes boards.
+- Selected-card actions work from both the menu bar and board title bar.
+- Other app windows can come in front of Cork when clicked, and Cork can be brought back with the shortcut or menu bar command.
+- Cork, Poster, and System themes are visually acceptable and persist across relaunch.
+- Per-card background and font choices affect only the selected card, remain readable, and persist across relaunch.
+- All built-in templates create named boards with editable starter cards from both Board menus.
+- Image replacement preserves the selected image card's title, frame, appearance, and connections.
+- Board cycling wraps in both directions and works from the keyboard and both Board menus.
+- The title-bar `String` tool draws directly between cards, stays active for repeat drawing, and exits from the control or Escape.
+- Line and string connections track moved or resized cards, persist across relaunch, and clean up safely.
+- Custom board colors update live, reset correctly, can be disabled, and persist across relaunch.
+- Board surface opacity and card opacity can be adjusted independently.
+- Compact, Standard, and Large board sizes update the panel geometry and persist across relaunch.
+- Compact mode leaves enough of the underlying app visible to make drag-and-drop staging easier.
+- Hovering every card type reveals its name without blocking interaction or clipping at board edges.
+- The Quick Start guide appears once for a fresh settings state and remains available from both Settings surfaces.
 
 Remaining:
 
@@ -491,6 +542,10 @@ Exit criteria:
 
 ## Iteration 11: Packaging and Release Readiness
 
+Status: in progress.
+
+Started: 2026-07-16.
+
 Goal: Cork can be installed and run like a normal macOS utility.
 
 Scope:
@@ -507,6 +562,36 @@ Exit criteria:
 - Cork builds as a `.app`.
 - Cork can be launched outside SwiftPM.
 - The menu bar item, global shortcut, persistence, and board window work in a packaged build.
+
+Completed so far:
+
+- Created clean illustrated, unmasked 1024x1024 Cork app-icon master artwork following Apple's current square layout guidance.
+- Added a complete macOS `AppIcon.appiconset` with 1x and 2x assets from 16x16 through 512x512.
+- Validated the asset catalog with Xcode's asset compiler, producing `AppIcon.icns` and `Assets.car` without warnings.
+- Documented the packaging asset layout and the next app-target step in `Packaging/README.md`.
+- Added a persisted first-run Quick Start experience suitable for fresh packaged installs.
+- Added `Cork.xcodeproj` with a shared `Cork App` scheme and a native macOS application target that links the local `CorkCore` package product.
+- Added App Store bundle metadata, Productivity category, version/build settings, accessory-app behavior, and encryption declaration.
+- Added App Sandbox, user-selected read-only file access, app-scoped bookmark entitlement support, and Hardened Runtime configuration.
+- Added a privacy manifest declaring no tracking or data collection for the current app.
+- Attached the complete icon asset catalog and privacy manifest to the app target.
+- Added a Release configuration that archives a universal Apple silicon and Intel `Cork.app`.
+- Added a packaged-app release guide and manual QA coverage.
+- Hardened Launch at Login handling for enabled, disabled, approval-required, unavailable, and error states.
+- Verified that the Debug app build and unsigned Release archive succeed through Xcode.
+- Added backward-compatible bookmark fields to image and file cards.
+- Capture read-only app-scoped bookmarks from Finder drops and native image selection.
+- Resolve security-scoped file access only while generating thumbnails, checking files, opening files, or revealing them in Finder.
+- Preserve bookmarks through rename, replacement, duplication, autosave, JSON reload, and older-board decoding.
+- Configured signing team `FLJNW3455S` and bundle identifier `net.miguelrodriguez.Cork`.
+- Verified a warning-free team-signed Debug build and signed universal Release archive with the intended sandbox entitlements.
+- Expanded bookmark creation, replacement, backward compatibility, and JSON persistence coverage to 228 tests.
+
+Next:
+
+- Verify Cork's file references, global hot key, persistence, and Launch at Login behavior in the signed packaged build.
+- Prepare the public privacy policy, support URL, App Store description, and 16:10 screenshots.
+- Validate and upload the signed archive through Xcode Organizer.
 
 ## Backlog
 

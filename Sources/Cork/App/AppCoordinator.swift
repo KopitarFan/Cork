@@ -21,12 +21,27 @@ final class AppCoordinator: ObservableObject {
     }
     private lazy var boardPanelController = BoardPanelController(
         boardStore: boardStore,
-        settingsStore: settingsStore
+        settingsStore: settingsStore,
+        onShowPreferences: { [weak self] in
+            self?.showPreferences()
+        },
+        onShowQuickStart: { [weak self] in
+            self?.showQuickStartGuide()
+        }
     )
     private lazy var preferencesWindowController = PreferencesWindowController(
         settingsStore: settingsStore,
         launchAtLoginController: launchAtLoginController,
         hotKeyController: hotKeyController
+    )
+    private lazy var quickStartWindowController = QuickStartWindowController(
+        settingsStore: settingsStore,
+        onShowBoard: { [weak self] in
+            self?.showBoard()
+        },
+        onShowPreferences: { [weak self] in
+            self?.showPreferences()
+        }
     )
     private var didStart = false
 
@@ -44,11 +59,14 @@ final class AppCoordinator: ObservableObject {
         NSApp.setActivationPolicy(.accessory)
         hotKeyController.start()
         launchAtLoginController.refresh()
+        showQuickStartGuideIfNeeded()
     }
 
     func toggleBoard() {
-        if isBoardVisible {
+        if isBoardVisible, boardPanelController.isFrontmost {
             hideBoard()
+        } else if isBoardVisible {
+            bringBoardToFront()
         } else {
             showBoard()
         }
@@ -59,18 +77,45 @@ final class AppCoordinator: ObservableObject {
         isBoardVisible = true
     }
 
+    func bringBoardToFront() {
+        boardPanelController.bringToFront()
+        isBoardVisible = true
+    }
+
     func hideBoard() {
         boardPanelController.hide()
         isBoardVisible = false
+    }
+
+    var boardToggleTitle: String {
+        if isBoardVisible, !boardPanelController.isFrontmost {
+            return "Bring Cork to Front"
+        }
+
+        return isBoardVisible ? "Hide Cork" : "Show Cork"
     }
 
     func showPreferences() {
         preferencesWindowController.show()
     }
 
+    func showQuickStartGuide() {
+        quickStartWindowController.show()
+    }
+
     func flushPendingAutosave() {
         boardStore.flushPendingAutosave()
         settingsStore.flushPendingAutosave()
+    }
+
+    private func showQuickStartGuideIfNeeded() {
+        guard settingsStore.markQuickStartGuideSeen() else {
+            return
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.showQuickStartGuide()
+        }
     }
 
     private static func makeBoardStore() -> BoardStore {

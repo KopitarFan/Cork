@@ -54,6 +54,7 @@ Current files:
 - `Sources/Cork/App/LaunchAtLoginController.swift`
 - `Sources/Cork/App/MenuBarContent.swift`
 - `Sources/Cork/App/PreferencesWindowController.swift`
+- `Sources/Cork/App/QuickStartWindowController.swift`
 
 Responsibilities:
 
@@ -63,10 +64,28 @@ Responsibilities:
 - Route user commands to the board store and panel controller.
 - Present native prompts for lightweight card and board editing.
 - Present the Preferences window.
-- Bridge system settings such as launch at login.
+- Present the Quick Start guide once for new users and on demand from either Settings surface.
+- Bridge system settings such as launch at login, including approval-required states and a direct route to Login Items settings.
 - Keep app-level state such as whether the board is visible.
 
 The shell should remain thin. It should not directly encode board data, perform imports, or know persistence details.
+
+### Release Packaging
+
+Current files:
+
+- `Cork.xcodeproj`
+- `Packaging/Info.plist`
+- `Packaging/Cork.entitlements`
+- `Packaging/PrivacyInfo.xcprivacy`
+- `Packaging/AppIcon/Cork-AppIcon-Master-1024.png`
+- `Packaging/Assets.xcassets/AppIcon.appiconset`
+
+The Swift package remains the fast development and test harness. The `Cork App` Xcode scheme builds the distributable macOS app, compiles `Sources/Cork`, links the local `CorkCore` package product, and owns bundle identity, signing, entitlements, asset compilation, privacy metadata, and App Store configuration.
+
+The release target enables App Sandbox and Hardened Runtime. Its file access is limited to Cork's container and read-only files explicitly selected or dragged by the user. Cork creates app-scoped, read-only security bookmarks at selection or drop time, stores them with image and file cards, and resolves them only while generating thumbnails or performing file actions.
+
+The app-icon master is square and unmasked so macOS can apply its system corner treatment. The asset catalog supplies every required macOS size and is validated with Xcode's asset compiler before being attached to the release target.
 
 ### Hot Keys
 
@@ -99,7 +118,11 @@ Responsibilities:
 - Calculate hidden and visible frames.
 - Animate from the configured slide edge.
 - Keep the panel lightweight and non-document-like.
-- Support board opacity through the SwiftUI board surface.
+- Use normal window stacking while visible so users can bring other app windows in front by clicking them.
+- Support board surface opacity and card opacity through separate SwiftUI view layers.
+- Render each card's persisted background and font choices through a shared card appearance layer.
+- Support compact, standard, and large display modes for different drag-and-drop workflows.
+- Support optional custom title-bar and board-surface colors without replacing the selected theme texture.
 - Eventually support deeper multi-monitor behavior and active-application rules.
 
 The panel controller should not know how board items are stored or rendered. It only hosts the board surface.
@@ -112,6 +135,7 @@ Current files:
 - `Sources/Cork/Board/BoardMouseInputView.swift`
 - `Sources/Cork/Board/BoardView.swift`
 - `Sources/Cork/Board/BoardCardView.swift`
+- `Sources/Cork/Board/BoardConnectionsView.swift`
 - `Sources/Cork/Board/FileImageThumbnailView.swift`
 
 The board UI is SwiftUI. It should prioritize direct manipulation and glanceability.
@@ -121,9 +145,18 @@ Guidelines:
 - Keep the canvas flat and immediately usable.
 - Avoid navigation stacks, inspectors, and persistent sidebars in the default board.
 - Prefer contextual controls that appear when selecting or hovering over a card.
+- Render card-name hover labels above cards but beneath the transparent pointer-capture layer so names remain visible without changing hit testing.
 - Keep card dimensions stable while dragging or editing.
 - Make keyboard actions first-class.
 - Keep card and board editing lightweight, using native dialogs instead of persistent inspectors.
+- Keep board switching available on the board title bar.
+- Keep command menus mirrored between the menu bar and board title bar when the command naturally belongs in both places.
+- Prefer compact labeled title-bar controls over icon-only controls when the command meaning is not immediately obvious.
+- Keep Preferences reachable from both the menu bar and board title bar.
+- Render board themes as surface backgrounds, not separate board types.
+- Render persisted card connections beneath cards so movement and resizing update their endpoints automatically.
+- Keep connection drawing as transient board UI state: the title-bar tool owns its selected mode and live preview, while completed connections flow through `BoardStore` for validation and persistence.
+- Route connection pointer gestures through `BoardMouseInputView` so string drawing temporarily replaces card movement with a crosshair source-to-target drag.
 - Route create, edit, duplicate, delete, move, and board lifecycle actions through `BoardStore`.
 - Route resizing through `BoardStore` so pointer, keyboard, and future command surfaces share one layout policy.
 - Render file-backed images from cached downsampled thumbnails instead of decoding original files from SwiftUI body evaluation.
@@ -137,6 +170,7 @@ Current files:
 - `Sources/CorkCore/BoardImportResolver.swift`
 - `Sources/CorkCore/BoardModels.swift`
 - `Sources/CorkCore/BoardStore.swift`
+- `Sources/CorkCore/BoardTemplates.swift`
 - `Sources/CorkCore/SettingsStore.swift`
 
 `CorkCore` owns board state and user-level operations.
@@ -146,6 +180,11 @@ Current model:
 - `CorkBoard`
 - `BoardItem`
 - `BoardItemContent`
+- `BoardConnection`
+- `BoardConnectionStyle`
+- `CardAppearance`
+- `CardFontDesign`
+- `BoardTemplate`
 - `BoardImportIntent`
 - `BoardImportResolver`
 - `TextCard`
@@ -156,6 +195,8 @@ Current model:
 - `BoardPoint`
 - `BoardSize`
 - `AppSettings`
+- `BoardTheme`
+- `BoardDisplayMode`
 - `HotKeyConfiguration`
 - `HotKeyModifier`
 
@@ -196,10 +237,15 @@ Current persistence behavior:
 - Save all boards.
 - Save the selected board ID.
 - Save card frames and card content.
+- Save each card's optional background color and font design.
+- Save card-to-card connections and their line or string style.
+- Save boards created from templates as ordinary editable boards with no ongoing template dependency.
 - Save board names, pinned state, board ordering, and board lifecycle changes.
 - Save created and edited text, Markdown, checklist, image, URL, file, and palette cards.
+- Save replacement image references without changing the surrounding card state.
 - Save resized card frames.
 - Save local image cards as file references.
+- Save read-only security-scoped bookmarks with local image and file references.
 - Save dropped image cards as local file references.
 - Save dropped text cards as text cards.
 - Save dropped web URLs as URL cards.
@@ -207,14 +253,21 @@ Current persistence behavior:
 - Restore state automatically on launch.
 - Fall back to sample boards if no saved state exists.
 - Debounce autosaves while cards are dragged.
+- Remove connections automatically when one of their cards is deleted.
+- Remap connection endpoints when a board is duplicated.
 - Flush pending autosaves when Cork quits.
 
 Current settings behavior:
 
-- Save board opacity.
+- Save board surface opacity.
+- Save card opacity.
+- Save the selected board theme.
+- Save custom board color enablement and color values.
+- Save the selected board display mode.
 - Save the selected slide edge.
 - Save the user's launch-at-login preference.
 - Save the user's global keyboard shortcut.
+- Save whether the current Quick Start guide has been presented.
 - Restore settings automatically on launch.
 - Fall back to strong defaults if no saved settings exist.
 - Debounce settings autosaves.
@@ -225,7 +278,7 @@ Storage notes:
 - JSON is the right first storage layer because the domain model is already `Codable`, easy to test, and easy to inspect during early development.
 - SwiftData can still replace the repository internals later if Cork needs richer querying or migrations.
 - Imported image/file assets should be stored in Application Support.
-- Security-scoped bookmarks will be needed for external file references when Cork links rather than copies.
+- Older snapshots remain compatible because bookmark fields are optional. A pre-bookmark card may need its image replaced or file dropped again to grant durable sandbox access.
 
 The important design point is that persistence remains isolated. Cork should be able to evolve storage without changing board rendering or windowing code.
 
@@ -378,6 +431,7 @@ Keep tests concentrated around behavior that should not regress:
 - Persistence round trips.
 - Import intent resolution.
 - App settings defaults, decoding, persistence, and update commands.
+- Board theme and display-mode settings.
 - Keyboard shortcut validation and autosave behavior.
 - Large-image interaction behavior through manual QA.
 

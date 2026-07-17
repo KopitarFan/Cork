@@ -44,6 +44,10 @@ struct MenuBarContent: View {
             }
         }
 
+        Menu("Selected Card") {
+            selectedCardActions
+        }
+
         Menu("Boards") {
             boardSwitcher
 
@@ -55,6 +59,34 @@ struct MenuBarContent: View {
                 Label("New Board", systemImage: "plus.rectangle.on.rectangle")
             }
 
+            Menu("New Board From Template") {
+                ForEach(BoardTemplate.allCases) { template in
+                    Button {
+                        createBoard(from: template)
+                    } label: {
+                        Label(template.title, systemImage: template.systemImageName)
+                    }
+                }
+            }
+
+            Divider()
+
+            Button {
+                selectNextBoard()
+            } label: {
+                Label("Next Board", systemImage: "chevron.right")
+            }
+            .keyboardShortcut(.tab, modifiers: [.control])
+            .disabled(boardStore.boards.count <= 1)
+
+            Button {
+                selectPreviousBoard()
+            } label: {
+                Label("Previous Board", systemImage: "chevron.left")
+            }
+            .keyboardShortcut(.tab, modifiers: [.control, .shift])
+            .disabled(boardStore.boards.count <= 1)
+
             Divider()
 
             currentBoardActions
@@ -62,8 +94,16 @@ struct MenuBarContent: View {
 
         Divider()
 
-        Button("Preferences...") {
+        Button {
+            coordinator.showQuickStartGuide()
+        } label: {
+            Label("Quick Start Guide...", systemImage: "questionmark.circle")
+        }
+
+        Button {
             coordinator.showPreferences()
+        } label: {
+            Label("Preferences...", systemImage: "gearshape")
         }
         .keyboardShortcut(",", modifiers: [.command])
 
@@ -86,9 +126,92 @@ struct MenuBarContent: View {
     }
 
     private var rawToggleBoardButton: some View {
-        Button(coordinator.isBoardVisible ? "Hide Cork" : "Show Cork") {
+        Button(coordinator.boardToggleTitle) {
             coordinator.toggleBoard()
         }
+    }
+
+    @ViewBuilder
+    private var selectedCardActions: some View {
+        Button {
+            editSelectedItem()
+        } label: {
+            Label("Edit Selected Card", systemImage: "pencil")
+        }
+        .disabled(!selectedItemIsEditable)
+
+        Button {
+            editSelectedItemAppearance()
+        } label: {
+            Label("Card Appearance...", systemImage: "paintpalette")
+        }
+        .disabled(boardStore.selectedItemID == nil)
+
+        Button {
+            replaceSelectedImage()
+        } label: {
+            Label("Replace Image...", systemImage: "photo.on.rectangle.angled")
+        }
+        .disabled(!selectedItemIsImage)
+
+        Divider()
+
+        selectedCardConnectionActions
+
+        Divider()
+
+        Button {
+            duplicateSelectedItem()
+        } label: {
+            Label("Duplicate Selected Card", systemImage: "plus.square.on.square")
+        }
+        .disabled(boardStore.selectedItemID == nil)
+
+        Button {
+            deleteSelectedItem()
+        } label: {
+            Label("Delete Selected Card", systemImage: "trash")
+        }
+        .disabled(boardStore.selectedItemID == nil)
+    }
+
+    @ViewBuilder
+    private var selectedCardConnectionActions: some View {
+        if boardStore.connectionSourceItemID == nil {
+            Button {
+                beginConnectionFromSelectedItem()
+            } label: {
+                Label("Start Connection Here", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+            }
+            .disabled(boardStore.selectedItemID == nil)
+        } else {
+            if canConnectToSelectedItem {
+                Button {
+                    connectToSelectedItem(style: .string)
+                } label: {
+                    Label("Connect with String", systemImage: "scribble.variable")
+                }
+
+                Button {
+                    connectToSelectedItem(style: .line)
+                } label: {
+                    Label("Connect with Line", systemImage: "line.diagonal")
+                }
+            }
+
+            Button {
+                boardStore.cancelConnection()
+            } label: {
+                Label("Cancel Connection", systemImage: "xmark")
+            }
+        }
+
+        Button {
+            removeSelectedItemConnections()
+        } label: {
+            Label("Remove Card Connections", systemImage: "link.badge.minus")
+        }
+        .disabled(!selectedItemHasConnections)
     }
 
     @ViewBuilder
@@ -180,8 +303,60 @@ struct MenuBarContent: View {
         boardStore.boards.firstIndex { $0.id == boardStore.selectedBoardID }
     }
 
+    private var selectedItemIsEditable: Bool {
+        guard let selectedItem = boardStore.selectedItem else {
+            return false
+        }
+
+        if case .file = selectedItem.content {
+            return false
+        }
+
+        return true
+    }
+
+    private var selectedItemIsImage: Bool {
+        guard let selectedItem = boardStore.selectedItem,
+              case .image = selectedItem.content
+        else {
+            return false
+        }
+
+        return true
+    }
+
+    private var canConnectToSelectedItem: Bool {
+        guard let sourceItemID = boardStore.connectionSourceItemID,
+              let selectedItemID = boardStore.selectedItemID
+        else {
+            return false
+        }
+
+        return sourceItemID != selectedItemID
+    }
+
+    private var selectedItemHasConnections: Bool {
+        guard let selectedItemID = boardStore.selectedItemID else {
+            return false
+        }
+
+        return boardStore.selectedBoard.connections.contains { $0.includes(selectedItemID) }
+    }
+
     private func toggleSelectedBoardPinned() {
         boardStore.toggleBoardPinned(id: boardStore.selectedBoardID)
+    }
+
+    private func selectNextBoard() {
+        if boardStore.selectNextBoard() {
+            coordinator.showBoard()
+        }
+    }
+
+    private func selectPreviousBoard() {
+        if boardStore.selectPreviousBoard() {
+            coordinator.showBoard()
+        }
     }
 
     private func duplicateSelectedBoard() {
@@ -244,7 +419,8 @@ struct MenuBarContent: View {
 
         boardStore.createImageCard(
             title: CorkDialogs.defaultImageTitle(for: imageURL),
-            source: .fileReference(imageURL)
+            source: .fileReference(imageURL),
+            securityScopedBookmark: SecurityScopedBookmark.create(for: imageURL)
         )
         coordinator.showBoard()
     }
@@ -266,6 +442,169 @@ struct MenuBarContent: View {
         coordinator.showBoard()
     }
 
+    private func editSelectedItem() {
+        guard let selectedItem = boardStore.selectedItem,
+              selectedItemIsEditable
+        else {
+            return
+        }
+
+        if editItem(selectedItem) {
+            coordinator.showBoard()
+        }
+    }
+
+    private func editSelectedItemAppearance() {
+        guard let selectedItem = boardStore.selectedItem,
+              let appearance = CorkDialogs.promptForCardAppearance(
+                title: "Card Appearance",
+                appearance: selectedItem.appearance
+              )
+        else {
+            return
+        }
+
+        if boardStore.updateItemAppearance(selectedItem.id, appearance: appearance) {
+            coordinator.showBoard()
+        }
+    }
+
+    private func replaceSelectedImage() {
+        guard let selectedItem = boardStore.selectedItem,
+              case .image(let card) = selectedItem.content,
+              let imageURL = CorkDialogs.chooseImageFile()
+        else {
+            return
+        }
+
+        if boardStore.updateImageCard(
+            selectedItem.id,
+            title: card.title,
+            source: .fileReference(imageURL),
+            securityScopedBookmark: SecurityScopedBookmark.create(for: imageURL)
+        ) {
+            coordinator.showBoard()
+        }
+    }
+
+    private func beginConnectionFromSelectedItem() {
+        guard let selectedItemID = boardStore.selectedItemID else {
+            return
+        }
+
+        if boardStore.beginConnection(from: selectedItemID) {
+            coordinator.showBoard()
+        }
+    }
+
+    private func connectToSelectedItem(style: BoardConnectionStyle) {
+        guard let selectedItemID = boardStore.selectedItemID else {
+            return
+        }
+
+        if boardStore.connectConnectionSource(to: selectedItemID, style: style) {
+            coordinator.showBoard()
+        }
+    }
+
+    private func removeSelectedItemConnections() {
+        guard let selectedItemID = boardStore.selectedItemID else {
+            return
+        }
+
+        if boardStore.removeConnections(for: selectedItemID) {
+            coordinator.showBoard()
+        }
+    }
+
+    private func editItem(_ item: BoardItem) -> Bool {
+        switch item.content {
+        case .text(let card):
+            guard let editedCard = CorkDialogs.promptForTextCard(
+                title: "Edit Text Note",
+                card: card
+            ) else {
+                return false
+            }
+
+            return boardStore.updateTextCard(
+                item.id,
+                title: editedCard.title,
+                body: editedCard.body,
+                format: editedCard.format
+            )
+
+        case .checklist(let card):
+            guard let editedCard = CorkDialogs.promptForChecklistCard(
+                title: "Edit Checklist",
+                card: card
+            ) else {
+                return false
+            }
+
+            return boardStore.updateChecklistCard(
+                item.id,
+                title: editedCard.title,
+                entries: editedCard.entries
+            )
+
+        case .image(let card):
+            guard let editedCard = CorkDialogs.promptForImageTitle(
+                title: "Edit Image Card",
+                card: card
+            ) else {
+                return false
+            }
+
+            return boardStore.updateImageCard(
+                item.id,
+                title: editedCard.title,
+                source: editedCard.source
+            )
+
+        case .url(let card):
+            guard let editedCard = CorkDialogs.promptForURLCard(
+                title: "Edit Link",
+                card: card
+            ) else {
+                return false
+            }
+
+            return boardStore.updateURLCard(
+                item.id,
+                title: editedCard.title,
+                url: editedCard.url
+            )
+
+        case .file:
+            return false
+
+        case .palette(let card):
+            guard let editedCard = CorkDialogs.promptForColorPaletteCard(
+                title: "Edit Color Palette",
+                card: card
+            ) else {
+                return false
+            }
+
+            return boardStore.updateColorPaletteCard(
+                item.id,
+                title: editedCard.title,
+                colors: editedCard.colors
+            )
+        }
+    }
+
+    private func duplicateSelectedItem() {
+        boardStore.duplicateSelectedItem()
+        coordinator.showBoard()
+    }
+
+    private func deleteSelectedItem() {
+        boardStore.deleteSelectedItem()
+        coordinator.showBoard()
+    }
+
     private func createBoard() {
         guard let name = CorkDialogs.promptForBoardName(
             title: "New Board",
@@ -276,6 +615,19 @@ struct MenuBarContent: View {
         }
 
         boardStore.createBoard(name: name)
+        coordinator.showBoard()
+    }
+
+    private func createBoard(from template: BoardTemplate) {
+        guard let name = CorkDialogs.promptForBoardName(
+            title: "New \(template.title) Board",
+            message: template.summary,
+            defaultName: template.title
+        ) else {
+            return
+        }
+
+        boardStore.createBoard(name: name, template: template)
         coordinator.showBoard()
     }
 

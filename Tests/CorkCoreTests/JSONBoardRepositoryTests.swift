@@ -33,6 +33,48 @@ final class JSONBoardRepositoryTests: XCTestCase {
         XCTAssertEqual(loadedSnapshot, snapshot)
     }
 
+    func testRoundTripPreservesSecurityScopedBookmarks() throws {
+        let fileURL = makeTemporaryFileURL()
+        let repository = JSONBoardRepository(fileURL: fileURL)
+        let imageURL = URL(fileURLWithPath: "/tmp/image.png")
+        let documentURL = URL(fileURLWithPath: "/tmp/document.pdf")
+        let imageBookmark = Data([0x01, 0x02, 0x03])
+        let documentBookmark = Data([0x04, 0x05, 0x06])
+        let board = CorkBoard(
+            name: "Persisted",
+            items: [
+                BoardItem(
+                    frame: BoardRect(
+                        origin: BoardPoint(x: 10, y: 10),
+                        size: BoardSize(width: 200, height: 180)
+                    ),
+                    content: .image(ImageCard(
+                        title: "Image",
+                        source: .fileReference(imageURL),
+                        securityScopedBookmark: imageBookmark
+                    ))
+                ),
+                BoardItem(
+                    frame: BoardRect(
+                        origin: BoardPoint(x: 230, y: 10),
+                        size: BoardSize(width: 220, height: 160)
+                    ),
+                    content: .file(FileCard(
+                        title: "Document",
+                        url: documentURL,
+                        securityScopedBookmark: documentBookmark
+                    ))
+                )
+            ]
+        )
+        let snapshot = BoardLibrarySnapshot(boards: [board], selectedBoardID: board.id)
+
+        try repository.saveSnapshot(snapshot)
+        let loadedSnapshot = try XCTUnwrap(repository.loadSnapshot())
+
+        XCTAssertEqual(loadedSnapshot, snapshot)
+    }
+
     func testLoadingInvalidJSONThrows() throws {
         let fileURL = makeTemporaryFileURL()
         try FileManager.default.createDirectory(

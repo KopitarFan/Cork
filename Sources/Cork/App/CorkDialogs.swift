@@ -2,6 +2,11 @@ import AppKit
 import CorkCore
 import UniformTypeIdentifiers
 
+enum ImageCardDoubleClickAction {
+    case rename
+    case replaceImage
+}
+
 enum CorkDialogs {
     static func promptForBoardName(
         title: String,
@@ -105,7 +110,32 @@ enum CorkDialogs {
             return nil
         }
 
-        return ImageCard(title: titleField.stringValue, source: card.source)
+        return ImageCard(
+            title: titleField.stringValue,
+            source: card.source,
+            securityScopedBookmark: card.securityScopedBookmark
+        )
+    }
+
+    static func promptForImageCardDoubleClickAction(
+        cardTitle: String
+    ) -> ImageCardDoubleClickAction? {
+        let alert = makeAlert(
+            title: cardTitle,
+            message: "Rename this card or choose a different image."
+        )
+        alert.addButton(withTitle: "Rename")
+        alert.addButton(withTitle: "Replace Image...")
+        alert.addButton(withTitle: "Cancel")
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            return .rename
+        case .alertSecondButtonReturn:
+            return .replaceImage
+        default:
+            return nil
+        }
     }
 
     static func promptForURLCard(title: String, card: URLCard) -> URLCard? {
@@ -156,6 +186,72 @@ enum CorkDialogs {
 
         let colors = PaletteColor.colors(from: colorsView.string)
         return ColorPaletteCard(title: titleField.stringValue, colors: colors)
+    }
+
+    static func promptForCardAppearance(
+        title: String,
+        appearance: CardAppearance
+    ) -> CardAppearance? {
+        let backgroundCheckbox = NSButton(
+            checkboxWithTitle: "Use a custom background color",
+            target: nil,
+            action: nil
+        )
+        backgroundCheckbox.state = appearance.backgroundHex == nil ? .off : .on
+
+        let colorWell = NSColorWell(frame: NSRect(x: 0, y: 0, width: 64, height: 26))
+        colorWell.color = NSColor(corkCardHex: appearance.backgroundHex ?? "#FFF1B8")
+        colorWell.isBordered = true
+        colorWell.isEnabled = appearance.backgroundHex != nil
+        NSColorPanel.shared.showsAlpha = false
+
+        let backgroundControls = NSStackView(views: [backgroundCheckbox, colorWell])
+        backgroundControls.orientation = .horizontal
+        backgroundControls.alignment = .centerY
+        backgroundControls.spacing = 12
+
+        let backgroundToggleController = CardBackgroundToggleController(colorWell: colorWell)
+        backgroundCheckbox.target = backgroundToggleController
+        backgroundCheckbox.action = #selector(CardBackgroundToggleController.toggleChanged(_:))
+
+        let fontPicker = NSPopUpButton(frame: .zero, pullsDown: false)
+        let fontDesigns = CardFontDesign.allCases
+        fontPicker.addItems(withTitles: fontDesigns.map(cardFontTitle))
+        fontPicker.selectItem(at: fontDesigns.firstIndex(of: appearance.fontDesign) ?? 0)
+
+        let form = makeFormView(rows: [
+            makeLabeledRow(label: "Background", view: backgroundControls),
+            makeLabeledRow(label: "Font", view: fontPicker)
+        ])
+
+        let alert = makeAlert(
+            title: title,
+            message: "These choices apply only to the selected card."
+        )
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.accessoryView = form
+
+        let response = withExtendedLifetime(backgroundToggleController) {
+            alert.runModal()
+        }
+
+        guard response == .alertFirstButtonReturn else {
+            return nil
+        }
+
+        let selectedFontIndex = max(0, fontPicker.indexOfSelectedItem)
+        let fontDesign = fontDesigns.indices.contains(selectedFontIndex)
+            ? fontDesigns[selectedFontIndex]
+            : .rounded
+        let backgroundHex = backgroundCheckbox.state == .on
+            ? colorWell.color.corkCardHexString
+            : nil
+
+        return CardAppearance(
+            backgroundHex: backgroundHex,
+            fontDesign: fontDesign
+        )
     }
 
     static func chooseImageFile() -> URL? {
@@ -321,5 +417,58 @@ enum CorkDialogs {
 
     private static func trimmed(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func cardFontTitle(_ fontDesign: CardFontDesign) -> String {
+        switch fontDesign {
+        case .system:
+            return "System"
+        case .rounded:
+            return "Rounded"
+        case .serif:
+            return "Serif"
+        case .monospaced:
+            return "Monospaced"
+        }
+    }
+
+    private final class CardBackgroundToggleController: NSObject {
+        private weak var colorWell: NSColorWell?
+
+        init(colorWell: NSColorWell) {
+            self.colorWell = colorWell
+        }
+
+        @objc func toggleChanged(_ sender: NSButton) {
+            colorWell?.isEnabled = sender.state == .on
+        }
+    }
+}
+
+private extension NSColor {
+    convenience init(corkCardHex hex: String) {
+        let normalizedHex = AppColorHex.normalized(hex) ?? "#FFF1B8"
+        let hexValue = String(normalizedHex.dropFirst())
+        let rgbValue = UInt64(hexValue, radix: 16) ?? 0
+
+        self.init(
+            srgbRed: CGFloat((rgbValue >> 16) & 0xFF) / 255,
+            green: CGFloat((rgbValue >> 8) & 0xFF) / 255,
+            blue: CGFloat(rgbValue & 0xFF) / 255,
+            alpha: 1
+        )
+    }
+
+    var corkCardHexString: String {
+        let color = usingColorSpace(.sRGB) ?? .black
+        let red = Self.corkCardColorByte(color.redComponent)
+        let green = Self.corkCardColorByte(color.greenComponent)
+        let blue = Self.corkCardColorByte(color.blueComponent)
+
+        return String(format: "#%02X%02X%02X", red, green, blue)
+    }
+
+    private static func corkCardColorByte(_ component: CGFloat) -> Int {
+        min(255, max(0, Int((component * 255).rounded())))
     }
 }

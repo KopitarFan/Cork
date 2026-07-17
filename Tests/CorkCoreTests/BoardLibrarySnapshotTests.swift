@@ -106,6 +106,27 @@ final class BoardLibrarySnapshotTests: XCTestCase {
         XCTAssertEqual(card.format, .plainText)
     }
 
+    func testFileBackedCardsDefaultBookmarkWhenDecodedWithoutField() throws {
+        let imageJSON = """
+        {
+            "title": "Old Image",
+            "source": null
+        }
+        """
+        let fileJSON = """
+        {
+            "title": "Old File",
+            "url": "file:///tmp/old.pdf"
+        }
+        """
+
+        let imageCard = try JSONDecoder().decode(ImageCard.self, from: Data(imageJSON.utf8))
+        let fileCard = try JSONDecoder().decode(FileCard.self, from: Data(fileJSON.utf8))
+
+        XCTAssertNil(imageCard.securityScopedBookmark)
+        XCTAssertNil(fileCard.securityScopedBookmark)
+    }
+
     func testPaletteColorParsesAndNormalizesHexValues() {
         let colors = PaletteColor.colors(from: "#f66, 4ecdc4\nFFE66D invalid #292F36")
 

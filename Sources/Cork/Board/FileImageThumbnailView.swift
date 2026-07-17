@@ -4,6 +4,7 @@ import SwiftUI
 
 struct FileImageThumbnailView: View {
     let url: URL
+    let securityScopedBookmark: Data?
 
     @StateObject private var loader = FileImageThumbnailLoader()
 
@@ -20,10 +21,13 @@ struct FileImageThumbnailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
         .onAppear {
-            loader.load(url)
+            loader.load(url, securityScopedBookmark: securityScopedBookmark)
         }
         .onChange(of: url) { _, nextURL in
-            loader.load(nextURL)
+            loader.load(nextURL, securityScopedBookmark: securityScopedBookmark)
+        }
+        .onChange(of: securityScopedBookmark) { _, nextBookmark in
+            loader.load(url, securityScopedBookmark: nextBookmark)
         }
         .onDisappear {
             loader.cancel()
@@ -46,9 +50,12 @@ private final class FileImageThumbnailLoader: ObservableObject {
     private var isLoading = false
     private var loadToken = UUID()
 
-    func load(_ url: URL) {
+    func load(_ url: URL, securityScopedBookmark: Data?) {
         let cache = FileImageThumbnailCache.shared
-        let cacheKey = cache.cacheKey(for: url)
+        let cacheKey = cache.cacheKey(
+            for: url,
+            securityScopedBookmark: securityScopedBookmark
+        )
 
         if currentCacheKey == cacheKey, image != nil || isLoading {
             return
@@ -68,7 +75,11 @@ private final class FileImageThumbnailLoader: ObservableObject {
         image = nil
         isLoading = true
 
-        cache.loadThumbnail(for: url, cacheKey: cacheKey) { [weak self] thumbnail in
+        cache.loadThumbnail(
+            for: url,
+            securityScopedBookmark: securityScopedBookmark,
+            cacheKey: cacheKey
+        ) { [weak self] thumbnail in
             Task { @MainActor [weak self] in
                 guard let self, self.loadToken == token else {
                     return
@@ -103,20 +114,25 @@ private final class FileImageThumbnailCache {
         cache.totalCostLimit = 128 * 1_024 * 1_024
     }
 
-    func cacheKey(for url: URL) -> String {
-        let values = try? url.resourceValues(forKeys: [
-            .contentModificationDateKey,
-            .fileSizeKey
-        ])
-        let modifiedAt = values?.contentModificationDate?.timeIntervalSinceReferenceDate ?? 0
-        let fileSize = values?.fileSize ?? 0
+    func cacheKey(for url: URL, securityScopedBookmark: Data?) -> String {
+        SecurityScopedBookmark.withAccess(
+            to: securityScopedBookmark,
+            fallbackURL: url
+        ) { resolvedURL in
+            let values = try? resolvedURL.resourceValues(forKeys: [
+                .contentModificationDateKey,
+                .fileSizeKey
+            ])
+            let modifiedAt = values?.contentModificationDate?.timeIntervalSinceReferenceDate ?? 0
+            let fileSize = values?.fileSize ?? 0
 
-        return [
-            url.standardizedFileURL.path,
-            "\(modifiedAt)",
-            "\(fileSize)",
-            "\(maxPixelSize)"
-        ].joined(separator: "|")
+            return [
+                resolvedURL.standardizedFileURL.path,
+                "\(modifiedAt)",
+                "\(fileSize)",
+                "\(maxPixelSize)"
+            ].joined(separator: "|")
+        }
     }
 
     func cachedImage(forKey cacheKey: String) -> NSImage? {
@@ -125,6 +141,7 @@ private final class FileImageThumbnailCache {
 
     func loadThumbnail(
         for url: URL,
+        securityScopedBookmark: Data?,
         cacheKey: String,
         completion: @escaping (NSImage?) -> Void
     ) {
@@ -134,7 +151,12 @@ private final class FileImageThumbnailCache {
         }
 
         thumbnailQueue.async { [cache, maxPixelSize] in
-            let image = Self.makeThumbnail(for: url, maxPixelSize: maxPixelSize)
+            let image = SecurityScopedBookmark.withAccess(
+                to: securityScopedBookmark,
+                fallbackURL: url
+            ) { resolvedURL in
+                Self.makeThumbnail(for: resolvedURL, maxPixelSize: maxPixelSize)
+            }
 
             if let image {
                 cache.setObject(

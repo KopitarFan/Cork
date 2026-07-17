@@ -6,10 +6,14 @@ struct BoardMouseInputView: NSViewRepresentable {
     let items: [BoardItem]
     let selectedItemID: BoardItem.ID?
     let boardSize: BoardSize
+    let connectionToolStyle: BoardConnectionStyle?
     let onSelect: (BoardItem.ID) -> Void
     let onClearSelection: () -> Void
     let onHoverChange: (BoardItem.ID?) -> Void
     let onEdit: (BoardItem.ID) -> Void
+    let onImageDoubleClick: (BoardItem.ID) -> Void
+    let onEditAppearance: (BoardItem.ID) -> Void
+    let onReplaceImage: (BoardItem.ID) -> Void
     let onMove: (BoardItem.ID, BoardPoint) -> Void
     let onResize: (BoardItem.ID, BoardSize) -> Void
     let onOpenURL: (BoardItem.ID) -> Void
@@ -17,7 +21,10 @@ struct BoardMouseInputView: NSViewRepresentable {
     let onRevealFile: (BoardItem.ID) -> Void
     let onDuplicate: (BoardItem.ID) -> Void
     let onDelete: (BoardItem.ID) -> Void
-    let onImport: ([BoardImportIntent], BoardPoint) -> Void
+    let onImport: ([BoardImportIntent], [URL: Data], BoardPoint) -> Void
+    let onConnectionDragStart: (BoardItem.ID, BoardPoint) -> Void
+    let onConnectionDragChange: (BoardPoint) -> Void
+    let onConnectionDragEnd: (BoardItem.ID?) -> Void
 
     func makeNSView(context: Context) -> BoardMouseCatcherView {
         let view = BoardMouseCatcherView()
@@ -29,10 +36,14 @@ struct BoardMouseInputView: NSViewRepresentable {
         nsView.items = items
         nsView.selectedItemID = selectedItemID
         nsView.boardSize = boardSize
+        nsView.connectionToolStyle = connectionToolStyle
         nsView.onSelect = onSelect
         nsView.onClearSelection = onClearSelection
         nsView.onHoverChange = onHoverChange
         nsView.onEdit = onEdit
+        nsView.onImageDoubleClick = onImageDoubleClick
+        nsView.onEditAppearance = onEditAppearance
+        nsView.onReplaceImage = onReplaceImage
         nsView.onMove = onMove
         nsView.onResize = onResize
         nsView.onOpenURL = onOpenURL
@@ -41,6 +52,9 @@ struct BoardMouseInputView: NSViewRepresentable {
         nsView.onDuplicate = onDuplicate
         nsView.onDelete = onDelete
         nsView.onImport = onImport
+        nsView.onConnectionDragStart = onConnectionDragStart
+        nsView.onConnectionDragChange = onConnectionDragChange
+        nsView.onConnectionDragEnd = onConnectionDragEnd
     }
 }
 
@@ -48,10 +62,22 @@ final class BoardMouseCatcherView: NSView {
     var items: [BoardItem] = []
     var selectedItemID: BoardItem.ID?
     var boardSize = BoardSize(width: 0, height: 0)
+    var connectionToolStyle: BoardConnectionStyle? {
+        didSet {
+            guard oldValue != connectionToolStyle else {
+                return
+            }
+
+            updateCursorForCurrentMouseLocation()
+        }
+    }
     var onSelect: ((BoardItem.ID) -> Void)?
     var onClearSelection: (() -> Void)?
     var onHoverChange: ((BoardItem.ID?) -> Void)?
     var onEdit: ((BoardItem.ID) -> Void)?
+    var onImageDoubleClick: ((BoardItem.ID) -> Void)?
+    var onEditAppearance: ((BoardItem.ID) -> Void)?
+    var onReplaceImage: ((BoardItem.ID) -> Void)?
     var onMove: ((BoardItem.ID, BoardPoint) -> Void)?
     var onResize: ((BoardItem.ID, BoardSize) -> Void)?
     var onOpenURL: ((BoardItem.ID) -> Void)?
@@ -59,7 +85,10 @@ final class BoardMouseCatcherView: NSView {
     var onRevealFile: ((BoardItem.ID) -> Void)?
     var onDuplicate: ((BoardItem.ID) -> Void)?
     var onDelete: ((BoardItem.ID) -> Void)?
-    var onImport: (([BoardImportIntent], BoardPoint) -> Void)?
+    var onImport: (([BoardImportIntent], [URL: Data], BoardPoint) -> Void)?
+    var onConnectionDragStart: ((BoardItem.ID, BoardPoint) -> Void)?
+    var onConnectionDragChange: ((BoardPoint) -> Void)?
+    var onConnectionDragEnd: ((BoardItem.ID?) -> Void)?
 
     private let dropResolver = BoardDropResolver()
     private var activeInteraction: ActiveInteraction?
@@ -105,6 +134,20 @@ final class BoardMouseCatcherView: NSView {
     override func mouseDown(with event: NSEvent) {
         let location = boardPoint(for: event)
 
+        if connectionToolStyle != nil {
+            guard let item = item(at: location) else {
+                onClearSelection?()
+                setHoveredItemID(nil)
+                return
+            }
+
+            onSelect?(item.id)
+            activeInteraction = .connect(sourceID: item.id)
+            onConnectionDragStart?(item.id, location)
+            updateCursor(at: location)
+            return
+        }
+
         if let item = resizeItem(at: location) {
             onSelect?(item.id)
             activeInteraction = .resize(
@@ -125,9 +168,12 @@ final class BoardMouseCatcherView: NSView {
         onSelect?(item.id)
 
         if event.clickCount == 2 {
-            if case .file = item.content {
+            switch item.content {
+            case .file:
                 onOpenFile?(item.id)
-            } else {
+            case .image:
+                onImageDoubleClick?(item.id)
+            default:
                 onEdit?(item.id)
             }
 
@@ -162,6 +208,9 @@ final class BoardMouseCatcherView: NSView {
                 height: startSize.height + location.y - startLocation.y
             )
             onResize?(id, nextSize)
+        case .connect:
+            onConnectionDragChange?(location)
+            updateHover(at: location)
         }
 
         updateCursor(at: location)
@@ -169,12 +218,24 @@ final class BoardMouseCatcherView: NSView {
 
     override func mouseUp(with event: NSEvent) {
         let location = boardPoint(for: event)
+
+        if case .connect(let sourceID) = activeInteraction {
+            let targetItemID = item(at: location)?.id
+            onConnectionDragEnd?(targetItemID == sourceID ? nil : targetItemID)
+        }
+
         activeInteraction = nil
         updateHover(at: location)
         updateCursor(at: location)
     }
 
     override func mouseMoved(with event: NSEvent) {
+        let location = boardPoint(for: event)
+        updateHover(at: location)
+        updateCursor(at: location)
+    }
+
+    override func mouseEntered(with event: NSEvent) {
         let location = boardPoint(for: event)
         updateHover(at: location)
         updateCursor(at: location)
@@ -236,6 +297,24 @@ final class BoardMouseCatcherView: NSView {
             menu.addItem(editItem)
         }
 
+        if case .image = item.content {
+            let replaceImageItem = NSMenuItem(
+                title: "Replace Image...",
+                action: #selector(replaceContextImage),
+                keyEquivalent: ""
+            )
+            replaceImageItem.target = self
+            menu.addItem(replaceImageItem)
+        }
+
+        let appearanceItem = NSMenuItem(
+            title: "Appearance...",
+            action: #selector(editContextItemAppearance),
+            keyEquivalent: ""
+        )
+        appearanceItem.target = self
+        menu.addItem(appearanceItem)
+
         menu.addItem(.separator())
 
         let duplicateItem = NSMenuItem(
@@ -272,7 +351,11 @@ final class BoardMouseCatcherView: NSView {
             return false
         }
 
-        onImport?(intents, boardPoint(for: sender))
+        onImport?(
+            intents,
+            dropResolver.securityScopedBookmarks(for: intents),
+            boardPoint(for: sender)
+        )
         return true
     }
 
@@ -282,6 +365,24 @@ final class BoardMouseCatcherView: NSView {
         }
 
         onEdit?(contextItemID)
+        self.contextItemID = nil
+    }
+
+    @objc private func editContextItemAppearance() {
+        guard let contextItemID else {
+            return
+        }
+
+        onEditAppearance?(contextItemID)
+        self.contextItemID = nil
+    }
+
+    @objc private func replaceContextImage() {
+        guard let contextItemID else {
+            return
+        }
+
+        onReplaceImage?(contextItemID)
         self.contextItemID = nil
     }
 
@@ -349,6 +450,11 @@ final class BoardMouseCatcherView: NSView {
     }
 
     private func updateCursor(at point: BoardPoint) {
+        if connectionToolStyle != nil || activeInteraction?.isConnecting == true {
+            NSCursor.crosshair.set()
+            return
+        }
+
         if case .resize = activeInteraction {
             NSCursor.resizeLeftRight.set()
             return
@@ -366,6 +472,20 @@ final class BoardMouseCatcherView: NSView {
         } else {
             NSCursor.arrow.set()
         }
+    }
+
+    private func updateCursorForCurrentMouseLocation() {
+        guard let window else {
+            return
+        }
+
+        let location = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+
+        guard bounds.contains(location) else {
+            return
+        }
+
+        updateCursor(at: BoardPoint(x: location.x, y: location.y))
     }
 
     private func boardPoint(for draggingInfo: NSDraggingInfo) -> BoardPoint {
@@ -405,6 +525,7 @@ final class BoardMouseCatcherView: NSView {
 }
 
 private enum ActiveInteraction {
+    case connect(sourceID: BoardItem.ID)
     case move(
         id: BoardItem.ID,
         startLocation: BoardPoint,
@@ -415,6 +536,14 @@ private enum ActiveInteraction {
         startLocation: BoardPoint,
         startSize: BoardSize
     )
+
+    var isConnecting: Bool {
+        if case .connect = self {
+            return true
+        }
+
+        return false
+    }
 }
 
 private extension BoardRect {

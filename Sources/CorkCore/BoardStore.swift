@@ -1,6 +1,11 @@
 import Combine
 import Foundation
 
+private enum SecurityScopedBookmarkUpdate {
+    case preserve
+    case replace(Data?)
+}
+
 @MainActor
 public final class BoardStore: ObservableObject {
     public enum Defaults {
@@ -18,6 +23,7 @@ public final class BoardStore: ObservableObject {
     @Published public private(set) var boards: [CorkBoard]
     @Published public private(set) var selectedBoardID: CorkBoard.ID
     @Published public private(set) var selectedItemID: BoardItem.ID?
+    @Published public private(set) var connectionSourceItemID: BoardItem.ID?
     @Published public private(set) var lastPersistenceError: Error?
 
     public convenience init(snapshot: BoardLibrarySnapshot) {
@@ -52,6 +58,7 @@ public final class BoardStore: ObservableObject {
         self.selectedBoardID = selectedBoardID.flatMap { id in
             boards.first { $0.id == id }?.id
         } ?? boards[0].id
+        self.connectionSourceItemID = nil
         self.repository = repository
         self.autosaveDelay = autosaveDelay
     }
@@ -62,6 +69,10 @@ public final class BoardStore: ObservableObject {
 
     public var selectedItem: BoardItem? {
         selectedBoard.items.first { $0.id == selectedItemID }
+    }
+
+    public var connectionSourceItem: BoardItem? {
+        selectedBoard.items.first { $0.id == connectionSourceItemID }
     }
 
     public var snapshot: BoardLibrarySnapshot {
@@ -77,7 +88,18 @@ public final class BoardStore: ObservableObject {
 
         selectedBoardID = id
         selectedItemID = nil
+        connectionSourceItemID = nil
         scheduleAutosave()
+    }
+
+    @discardableResult
+    public func selectNextBoard() -> Bool {
+        selectBoard(offsetBy: 1)
+    }
+
+    @discardableResult
+    public func selectPreviousBoard() -> Bool {
+        selectBoard(offsetBy: -1)
     }
 
     public func selectItem(_ id: BoardItem.ID) {
@@ -134,13 +156,15 @@ public final class BoardStore: ObservableObject {
     public func createImageCard(
         title: String = "Untitled Image",
         source: ImageSource? = nil,
+        securityScopedBookmark: Data? = nil,
         at origin: BoardPoint = Defaults.newCardOrigin,
         constrainedTo canvasSize: BoardSize? = nil
     ) -> BoardItem {
         createItem(
             content: .image(ImageCard(
                 title: sanitizedTitle(title, fallback: "Untitled Image"),
-                source: source
+                source: source,
+                securityScopedBookmark: securityScopedBookmark
             )),
             origin: origin,
             size: Defaults.imageCardSize,
@@ -170,13 +194,15 @@ public final class BoardStore: ObservableObject {
     public func createFileCard(
         title: String = "",
         url: URL,
+        securityScopedBookmark: Data? = nil,
         at origin: BoardPoint = Defaults.newCardOrigin,
         constrainedTo canvasSize: BoardSize? = nil
     ) -> BoardItem {
         createItem(
             content: .file(FileCard(
                 title: sanitizedFileTitle(title, url: url),
-                url: url
+                url: url,
+                securityScopedBookmark: securityScopedBookmark
             )),
             origin: origin,
             size: Defaults.fileCardSize,
@@ -258,14 +284,52 @@ public final class BoardStore: ObservableObject {
         title: String,
         source: ImageSource?
     ) -> Bool {
+        updateImageCard(
+            id,
+            title: title,
+            source: source,
+            bookmarkUpdate: .preserve
+        )
+    }
+
+    @discardableResult
+    public func updateImageCard(
+        _ id: BoardItem.ID,
+        title: String,
+        source: ImageSource?,
+        securityScopedBookmark: Data?
+    ) -> Bool {
+        updateImageCard(
+            id,
+            title: title,
+            source: source,
+            bookmarkUpdate: .replace(securityScopedBookmark)
+        )
+    }
+
+    private func updateImageCard(
+        _ id: BoardItem.ID,
+        title: String,
+        source: ImageSource?,
+        bookmarkUpdate: SecurityScopedBookmarkUpdate
+    ) -> Bool {
         updateItemContent(id) { content in
             guard case .image(let currentCard) = content else {
                 return nil
             }
 
+            let securityScopedBookmark: Data?
+            switch bookmarkUpdate {
+            case .preserve:
+                securityScopedBookmark = currentCard.securityScopedBookmark
+            case .replace(let bookmark):
+                securityScopedBookmark = bookmark
+            }
+
             let nextCard = ImageCard(
                 title: sanitizedTitle(title, fallback: "Untitled Image"),
-                source: source
+                source: source,
+                securityScopedBookmark: securityScopedBookmark
             )
 
             guard currentCard != nextCard else {
@@ -325,19 +389,141 @@ public final class BoardStore: ObservableObject {
     }
 
     @discardableResult
-    public func createBoard(name: String = "Untitled Board") -> CorkBoard {
+    public func updateItemAppearance(
+        _ id: BoardItem.ID,
+        appearance: CardAppearance
+    ) -> Bool {
+        let appearance = CardAppearance(
+            backgroundHex: appearance.backgroundHex,
+            fontDesign: appearance.fontDesign
+        )
+        let didUpdate = updateSelectedBoard { board in
+            guard let itemIndex = board.items.firstIndex(where: { $0.id == id }),
+                  board.items[itemIndex].appearance != appearance
+            else {
+                return false
+            }
+
+            board.items[itemIndex].appearance = appearance
+            board.updatedAt = Date()
+            return true
+        }
+
+        if didUpdate {
+            selectedItemID = id
+            scheduleAutosave()
+        }
+
+        return didUpdate
+    }
+
+    @discardableResult
+    public func beginConnection(from itemID: BoardItem.ID) -> Bool {
+        guard selectedBoard.items.contains(where: { $0.id == itemID }) else {
+            return false
+        }
+
+        connectionSourceItemID = itemID
+        selectedItemID = itemID
+        return true
+    }
+
+    public func cancelConnection() {
+        connectionSourceItemID = nil
+    }
+
+    @discardableResult
+    public func connectConnectionSource(
+        to targetItemID: BoardItem.ID,
+        style: BoardConnectionStyle
+    ) -> Bool {
+        guard let sourceItemID = connectionSourceItemID,
+              sourceItemID != targetItemID,
+              selectedBoard.items.contains(where: { $0.id == sourceItemID }),
+              selectedBoard.items.contains(where: { $0.id == targetItemID })
+        else {
+            return false
+        }
+
+        let didUpdate = updateSelectedBoard { board in
+            if let connectionIndex = board.connections.firstIndex(where: {
+                $0.connects(sourceItemID, targetItemID)
+            }) {
+                guard board.connections[connectionIndex].style != style else {
+                    return false
+                }
+
+                board.connections[connectionIndex].style = style
+            } else {
+                board.connections.append(BoardConnection(
+                    sourceItemID: sourceItemID,
+                    targetItemID: targetItemID,
+                    style: style
+                ))
+            }
+
+            board.updatedAt = Date()
+            return true
+        }
+
+        connectionSourceItemID = nil
+        selectedItemID = targetItemID
+
+        if didUpdate {
+            scheduleAutosave()
+        }
+
+        return didUpdate
+    }
+
+    @discardableResult
+    public func removeConnections(for itemID: BoardItem.ID) -> Bool {
+        let didUpdate = updateSelectedBoard { board in
+            guard board.items.contains(where: { $0.id == itemID }) else {
+                return false
+            }
+
+            let previousCount = board.connections.count
+            board.connections.removeAll { $0.includes(itemID) }
+
+            guard board.connections.count != previousCount else {
+                return false
+            }
+
+            board.updatedAt = Date()
+            return true
+        }
+
+        if connectionSourceItemID == itemID {
+            connectionSourceItemID = nil
+        }
+
+        if didUpdate {
+            scheduleAutosave()
+        }
+
+        return didUpdate
+    }
+
+    @discardableResult
+    public func createBoard(
+        name: String = "Untitled Board",
+        template: BoardTemplate? = nil
+    ) -> CorkBoard {
         let now = Date()
         let board = CorkBoard(
             name: sanitizedTitle(name, fallback: "Untitled Board"),
             createdAt: now,
             updatedAt: now,
-            sortIndex: nextBoardSortIndex()
+            sortIndex: nextBoardSortIndex(),
+            items: template?.makeItems() ?? []
         )
 
         boards.append(board)
         normalizeBoardSortIndices()
         selectedBoardID = board.id
         selectedItemID = nil
+        connectionSourceItemID = nil
         scheduleAutosave()
 
         return board
@@ -413,10 +599,26 @@ public final class BoardStore: ObservableObject {
 
         let now = Date()
         let sourceBoard = boards[boardIndex]
+        var duplicatedItemIDs: [BoardItem.ID: BoardItem.ID] = [:]
         let duplicatedItems = sourceBoard.items.map { item in
             var item = item
-            item.id = UUID()
+            let duplicatedID = UUID()
+            duplicatedItemIDs[item.id] = duplicatedID
+            item.id = duplicatedID
             return item
+        }
+        let duplicatedConnections = sourceBoard.connections.compactMap { connection -> BoardConnection? in
+            guard let sourceItemID = duplicatedItemIDs[connection.sourceItemID],
+                  let targetItemID = duplicatedItemIDs[connection.targetItemID]
+            else {
+                return nil
+            }
+
+            return BoardConnection(
+                sourceItemID: sourceItemID,
+                targetItemID: targetItemID,
+                style: connection.style
+            )
         }
         let duplicatedBoard = CorkBoard(
             name: "\(sourceBoard.name) Copy",
@@ -424,13 +626,15 @@ public final class BoardStore: ObservableObject {
             updatedAt: now,
             isPinned: false,
             sortIndex: boardIndex + 1,
-            items: duplicatedItems
+            items: duplicatedItems,
+            connections: duplicatedConnections
         )
 
         boards.insert(duplicatedBoard, at: boardIndex + 1)
         normalizeBoardSortIndices()
         selectedBoardID = duplicatedBoard.id
         selectedItemID = nil
+        connectionSourceItemID = nil
         scheduleAutosave()
 
         return boards.first { $0.id == duplicatedBoard.id }
@@ -452,6 +656,7 @@ public final class BoardStore: ObservableObject {
             let fallbackIndex = min(boardIndex, boards.count - 1)
             selectedBoardID = boards[fallbackIndex].id
             selectedItemID = nil
+            connectionSourceItemID = nil
         }
 
         scheduleAutosave()
@@ -463,7 +668,8 @@ public final class BoardStore: ObservableObject {
     public func importItems(
         _ intents: [BoardImportIntent],
         at origin: BoardPoint,
-        constrainedTo canvasSize: BoardSize? = nil
+        constrainedTo canvasSize: BoardSize? = nil,
+        securityScopedBookmarks: [URL: Data] = [:]
     ) -> [BoardItem] {
         var createdItems: [BoardItem] = []
         var nextOrigin = origin
@@ -476,6 +682,7 @@ public final class BoardStore: ObservableObject {
                 item = createImageCard(
                     title: title,
                     source: .fileReference(url),
+                    securityScopedBookmark: securityScopedBookmarks[url],
                     at: nextOrigin,
                     constrainedTo: canvasSize
                 )
@@ -497,6 +704,7 @@ public final class BoardStore: ObservableObject {
                 item = createFileCard(
                     title: title,
                     url: url,
+                    securityScopedBookmark: securityScopedBookmarks[url],
                     at: nextOrigin,
                     constrainedTo: canvasSize
                 )
@@ -626,6 +834,7 @@ public final class BoardStore: ObservableObject {
             }
 
             board.items.remove(at: itemIndex)
+            board.connections.removeAll { $0.includes(id) }
             board.updatedAt = Date()
             return true
         }
@@ -633,6 +842,10 @@ public final class BoardStore: ObservableObject {
         if didDelete {
             if selectedItemID == id {
                 selectedItemID = nil
+            }
+
+            if connectionSourceItemID == id {
+                connectionSourceItemID = nil
             }
 
             scheduleAutosave()
@@ -776,6 +989,19 @@ public final class BoardStore: ObservableObject {
 
             self?.saveSnapshot(snapshot)
         }
+    }
+
+    @discardableResult
+    private func selectBoard(offsetBy offset: Int) -> Bool {
+        guard boards.count > 1,
+              let selectedIndex = boards.firstIndex(where: { $0.id == selectedBoardID })
+        else {
+            return false
+        }
+
+        let nextIndex = (selectedIndex + offset + boards.count) % boards.count
+        selectBoard(boards[nextIndex].id)
+        return true
     }
 
     private func saveSnapshot(_ snapshot: BoardLibrarySnapshot) {
